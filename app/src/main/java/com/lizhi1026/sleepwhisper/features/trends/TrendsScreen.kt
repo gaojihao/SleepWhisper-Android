@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -25,6 +27,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.EmptyStateCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 
 @Composable
@@ -32,26 +35,59 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
     val scheme = LocalSWScheme.current
     val buckets by vm.weeklyBuckets.observeAsState(emptyList())
     val rec by vm.currentRecommendation.observeAsState(null)
+    val todaySleeps by vm.todaySleeps.observeAsState(emptyList())
+    val todayFeedings by vm.todayFeedings.observeAsState(emptyList())
+    val recent by vm.recentEvents.observeAsState(emptyList())
+    val hasAnyData by vm.hasAnyData.observeAsState(false)
 
     Box(modifier = Modifier.fillMaxSize()) {
         BreathingBackground()
-        Column(modifier = Modifier.fillMaxSize().padding(SWSpacing.lg), verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(SWSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)
+        ) {
             BasicText(
                 stringResource(R.string.trends_title),
                 style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
             )
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    BasicText(
-                        stringResource(R.string.trends_week_title),
-                        style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-                    )
-                    if (buckets.isEmpty()) {
+
+            if (!hasAnyData) {
+                EmptyStateCard(
+                    titleRes = R.string.trends_empty_title,
+                    subtitleRes = R.string.trends_empty_subtitle
+                )
+            } else {
+                // Today 24-hour timeline
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Column {
                         BasicText(
-                            stringResource(R.string.trends_empty_subtitle),
-                            style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
+                            stringResource(R.string.trends_today),
+                            style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
                         )
-                    } else {
+                        TodayTimeline(
+                            sleeps = todaySleeps,
+                            feedings = todayFeedings,
+                            modifier = Modifier.padding(top = SWSpacing.sm)
+                        )
+                    }
+                }
+
+                // Recent events with long-press to edit
+                RecentEventsList(
+                    events = recent,
+                    onLongPress = vm::beginEdit
+                )
+
+                // Weekly bar chart
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Column {
+                        BasicText(
+                            stringResource(R.string.trends_week_title),
+                            style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                        )
                         val avgHours = buckets.sumOf { it.second }.toDouble() / 3600.0 / 7.0
                         BasicText(
                             stringResource(R.string.trends_week_avg, avgHours),
@@ -61,17 +97,12 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
                     }
                 }
             }
-            rec?.let {
-                GlassCard(modifier = Modifier.fillMaxWidth()) {
-                    BasicText(
-                        stringResource(R.string.trends_aiasleep_title),
-                        style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-                    )
-                    BasicText(
-                        text = "${it.wakeWindowMinutes} ${stringResource(R.string.home_wakewindow_unit)} · ${(it.confidence * 100).toInt()}%",
-                        style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
-                    )
-                }
+
+            if (hasAnyData && rec == null) {
+                EmptyStateCard(
+                    titleRes = R.string.trends_aiasleep_title,
+                    subtitleRes = R.string.trends_aiasleep_subtitle
+                )
             }
         }
     }

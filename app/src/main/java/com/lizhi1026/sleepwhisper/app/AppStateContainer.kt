@@ -246,6 +246,8 @@ class AppStateContainer @Inject constructor(
 
     fun clearPendingEdit() { _pendingEditTarget.value = null }
 
+    fun requestEdit(target: EventEditTarget) { _pendingEditTarget.value = target }
+
     suspend fun recomputeRecommendation() {
         val b = _baby.value ?: return
         val sevenDaysAgo = System.currentTimeMillis() - 7 * 24 * 3600_000L

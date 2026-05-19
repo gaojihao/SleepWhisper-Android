@@ -35,6 +35,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
+import com.lizhi1026.sleepwhisper.core.visualkit.components.RollingNumber
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButtonStyle
 import com.lizhi1026.sleepwhisper.model.DiaperEvent
@@ -92,8 +93,8 @@ fun HomeScreen(
                             style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
-                            BasicText(
-                                text = remaining.toString(),
+                            RollingNumber(
+                                value = remaining,
                                 style = SWFont.displayMD().copy(color = SWColor.textPrimary(scheme))
                             )
                             BasicText(
