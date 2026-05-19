@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -31,13 +33,15 @@ fun AudioWaveform(
     color: Color,
     barCount: Int = 14
 ) {
+    val reduceMotion = LocalReduceMotion.current
     val phases = remember(barCount) { List(barCount) { Random.nextFloat() * 2f } }
     val periods = remember(barCount) { List(barCount) { 700 + Random.nextInt(400) } }
     val animatables = remember(barCount) { List(barCount) { Animatable(0.15f) } }
 
-    LaunchedEffect(isPlaying) {
-        if (!isPlaying) {
-            animatables.forEach { a -> launch { a.animateTo(0.15f, tween(400)) } }
+    LaunchedEffect(isPlaying, reduceMotion) {
+        if (!isPlaying || reduceMotion) {
+            val target = if (reduceMotion && isPlaying) 0.55f else 0.15f
+            animatables.forEach { a -> launch { a.animateTo(target, tween(400)) } }
             return@LaunchedEffect
         }
         val startTime = System.currentTimeMillis()
@@ -52,7 +56,7 @@ fun AudioWaveform(
         }
     }
 
-    Canvas(modifier = modifier.fillMaxWidth().height(36.dp)) {
+    Canvas(modifier = modifier.fillMaxWidth().height(36.dp).clearAndSetSemantics { }) {
         val gap = 2.dp.toPx()
         val totalGap = gap * (barCount - 1)
         val barWidth = (size.width - totalGap) / barCount

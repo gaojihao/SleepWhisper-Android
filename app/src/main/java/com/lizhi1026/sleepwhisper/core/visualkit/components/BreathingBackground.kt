@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
@@ -27,8 +29,8 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 @Composable
 fun BreathingBackground(modifier: Modifier = Modifier) {
     val scheme = LocalSWScheme.current
-    Box(modifier = modifier.fillMaxSize().background(SWGradient.surface(scheme))) {
-        if (scheme != SWScheme.DAY) {
+    Box(modifier = modifier.fillMaxSize().clearAndSetSemantics { }.background(SWGradient.surface(scheme))) {
+        if (scheme != SWScheme.DAY && !LocalReduceMotion.current) {
             val t = rememberInfiniteTransition(label = "breath")
             val phase by t.animateFloat(
                 initialValue = 0f,

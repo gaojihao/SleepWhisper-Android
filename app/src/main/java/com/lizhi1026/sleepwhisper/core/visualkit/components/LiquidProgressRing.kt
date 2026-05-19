@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -34,10 +35,11 @@ fun LiquidProgressRing(
     radius: Dp = 80.dp
 ) {
     val clampedProgress = progress.coerceIn(0f, 1f)
+    val reduceMotion = LocalReduceMotion.current
     val phaseTransition = rememberInfiniteTransition(label = "liquid-phase")
     val phase by phaseTransition.animateFloat(
         initialValue = 0f,
-        targetValue = (2 * PI).toFloat(),
+        targetValue = if (reduceMotion) 0f else (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 2400, easing = LinearEasing),
             repeatMode = RepeatMode.Restart

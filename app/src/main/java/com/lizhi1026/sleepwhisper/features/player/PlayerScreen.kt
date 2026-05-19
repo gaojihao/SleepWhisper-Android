@@ -220,8 +220,21 @@ private fun PresetRow(preset: AudioPreset, isPlaying: Boolean, onTap: () -> Unit
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (isPlaying) SWGradient.accent(scheme) else SWGradient.primary(scheme))
-            )
+                    .background(if (isPlaying) SWGradient.accent(scheme) else SWGradient.primary(scheme)),
+                contentAlignment = Alignment.Center
+            ) {
+                val iconId = androidx.compose.ui.platform.LocalContext.current.resources
+                    .getIdentifier(preset.iconName, "drawable",
+                        androidx.compose.ui.platform.LocalContext.current.packageName)
+                if (iconId != 0) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = iconId),
+                        contentDescription = null,
+                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
             Column(modifier = Modifier.weight(1f)) {
                 BasicText(
                     text = stringResource(audioPresetNameKey(preset.nameKey)),

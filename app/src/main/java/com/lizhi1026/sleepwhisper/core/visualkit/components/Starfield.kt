@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import kotlin.math.abs
@@ -58,7 +60,7 @@ fun Starfield(
     val t = rememberInfiniteTransition(label = "starfield")
     val tick by t.animateFloat(
         initialValue = 0f,
-        targetValue = 6000f,
+        targetValue = if (LocalReduceMotion.current) 0f else 6000f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 6000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
@@ -66,7 +68,7 @@ fun Starfield(
         label = "tick"
     )
 
-    Canvas(modifier = modifier.fillMaxSize()) {
+    Canvas(modifier = modifier.fillMaxSize().clearAndSetSemantics { }) {
         val w = size.width
         val h = size.height
         stars.forEach { star ->

@@ -49,6 +49,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
+import com.lizhi1026.sleepwhisper.core.visualkit.floatingY
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
@@ -157,7 +158,9 @@ private fun CountdownSection(elapsedSec: Long) {
     BasicText(
         text = displayText,
         style = style,
-        modifier = Modifier.padding(horizontal = 0.dp)
+        modifier = Modifier
+            .padding(horizontal = 0.dp)
+            .floatingY(amplitude = 2.dp, durationMillis = 8000)
     )
 }
 

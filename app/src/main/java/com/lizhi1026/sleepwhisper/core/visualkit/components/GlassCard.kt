@@ -22,7 +22,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWShadow
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 
-enum class ElevationLevel { SOFT, MEDIUM, STRONG }
+enum class ElevationLevel { SOFT, MEDIUM, STRONG, HERO }
 
 /**
  * Glass-effect card — port of iOS Core/VisualKit/GlassCard.swift.
@@ -42,6 +42,11 @@ fun GlassCard(
         ElevationLevel.SOFT -> SWShadow.soft(scheme)
         ElevationLevel.MEDIUM -> SWShadow.medium(scheme)
         ElevationLevel.STRONG -> SWShadow.strong(scheme)
+        ElevationLevel.HERO -> {
+            // Hero is a glow-on-top-of-strong combo: keep strong shadow shape but enlarge radius
+            val s = SWShadow.strong(scheme)
+            SWShadow.Spec(color = s.color, radius = s.radius + 16.dp, y = s.y + 4.dp)
+        }
     }
     val shape = RoundedCornerShape(cornerRadius)
     val borderMod = if (scheme == SWScheme.DAY) {

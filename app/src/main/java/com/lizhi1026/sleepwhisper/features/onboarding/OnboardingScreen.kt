@@ -78,7 +78,14 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
 
             // Hero section
             Box(contentAlignment = Alignment.Center) {
-                PulseRing(color = SWColor.accent(scheme), radius = 60.dp)
+                PulseRing(
+                    color = SWColor.accent(scheme),
+                    radius = 60.dp,
+                    intensity = if (scheme == SWScheme.DAY)
+                        com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.SOFT
+                    else
+                        com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.STRONG
+                )
                 Box(
                     modifier = Modifier
                         .size(88.dp)

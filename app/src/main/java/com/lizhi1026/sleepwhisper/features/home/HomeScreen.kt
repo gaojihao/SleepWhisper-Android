@@ -48,6 +48,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
+import com.lizhi1026.sleepwhisper.core.visualkit.floatingY
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
@@ -174,9 +175,9 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
         else -> SWColor.danger(scheme)
     }
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().floatingY(),
         contentPadding = PaddingValues(SWSpacing.xl),
-        elevation = ElevationLevel.STRONG
+        elevation = ElevationLevel.HERO
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
             BasicText(
@@ -253,7 +254,8 @@ private fun NowPlayingCard(presetName: String?, isPlaying: Boolean, onClick: () 
             AudioWaveform(
                 modifier = Modifier.height(22.dp),
                 isPlaying = isPlaying,
-                color = SWColor.accent(scheme)
+                color = SWColor.accent(scheme),
+                barCount = 24
             )
         }
     }
@@ -303,7 +305,12 @@ private fun SleepCTA(onTap: () -> Unit, onLongPress: () -> Unit) {
             .padding(top = SWSpacing.md),
         contentAlignment = Alignment.Center
     ) {
-        PulseRing(color = SWColor.accent(scheme), radius = 110.dp)
+        PulseRing(
+            color = SWColor.accent(scheme),
+            radius = 110.dp,
+            intensity = if (scheme == SWScheme.DAY) com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.SOFT
+                        else com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.STRONG
+        )
         Box(
             modifier = Modifier
                 .widthIn(max = 280.dp)

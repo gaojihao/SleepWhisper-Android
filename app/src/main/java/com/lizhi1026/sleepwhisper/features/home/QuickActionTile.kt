@@ -25,6 +25,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
@@ -70,6 +76,14 @@ fun QuickActionTile(
         modifier = modifier
             .scale(scale)
             .height(70.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = label
+                role = Role.Button
+                onClick(label = null) { onTap(); true }
+                if (onLongPress != null) {
+                    onLongClick(label = null) { onLongPress(); true }
+                }
+            }
             .pointerInput(onLongPress, onTap) {
                 detectTapGestures(
                     onPress = {

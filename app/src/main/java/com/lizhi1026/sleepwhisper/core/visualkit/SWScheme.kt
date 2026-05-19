@@ -11,5 +11,10 @@ val LocalSWScheme = compositionLocalOf { SWScheme.DAY }
 /** Provides [SWScheme] to descendants. Pair with a ThemeProvider observation upstream. */
 @Composable
 fun SWTheme(scheme: SWScheme, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalSWScheme provides scheme, content = content)
+    val reduce = rememberReduceMotion()
+    CompositionLocalProvider(
+        LocalSWScheme provides scheme,
+        LocalReduceMotion provides reduce,
+        content = content
+    )
 }
