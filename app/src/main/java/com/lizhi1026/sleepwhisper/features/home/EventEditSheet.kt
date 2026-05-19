@@ -98,6 +98,9 @@ fun EventEditSheet(
             elevation = ElevationLevel.STRONG
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.md)) {
+                com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
                 BasicText(
                     text = when (target) {
                         is EventEditTarget.Feeding -> stringResource(
@@ -109,7 +112,9 @@ fun EventEditSheet(
                             stringResource(target.event.type.displayKey())
                         )
                     },
-                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                    style = com.lizhi1026.sleepwhisper.core.visualkit.SWFont.serifItalic(22).copy(
+                        color = SWColor.textPrimary(scheme)
+                    )
                 )
 
                 Column {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
@@ -73,15 +75,26 @@ fun BottleAmountSheet(
             elevation = ElevationLevel.STRONG
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.md)) {
+                com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle(
+                    modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
+                )
                 BasicText(
                     text = stringResource(R.string.bottle_title),
-                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                    style = SWFont.serifItalic(22).copy(color = SWColor.textSecondary(scheme))
                 )
 
-                BasicText(
-                    text = "$amount ml",
-                    style = SWFont.displayMD().copy(color = SWColor.primary(scheme))
-                )
+                Row(verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
+                    com.lizhi1026.sleepwhisper.core.visualkit.components.RollingNumber(
+                        value = amount,
+                        style = SWFont.displayLGTabular().copy(color = SWColor.primary(scheme))
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(4.dp))
+                    BasicText(
+                        text = "ml",
+                        style = SWFont.titleMD().copy(color = SWColor.textSecondary(scheme)),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

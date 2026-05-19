@@ -65,9 +65,14 @@ fun SleepTypePicker(
             elevation = ElevationLevel.STRONG
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.md)) {
+                com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
                 BasicText(
                     text = stringResource(R.string.sleeptype_picker_title),
-                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                    style = com.lizhi1026.sleepwhisper.core.visualkit.SWFont.serifItalic(22).copy(
+                        color = SWColor.textPrimary(scheme)
+                    )
                 )
                 BasicText(
                     text = stringResource(R.string.sleeptype_picker_subtitle),

@@ -1,17 +1,28 @@
 package com.lizhi1026.sleepwhisper.features.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -19,9 +30,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
@@ -30,9 +45,12 @@ import com.lizhi1026.sleepwhisper.core.strings.greetingForHour
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
+import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
+import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.RollingNumber
@@ -40,7 +58,9 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButtonStyle
 import com.lizhi1026.sleepwhisper.model.DiaperEvent
 import com.lizhi1026.sleepwhisper.model.FeedingEvent.FeedingMethod
-import java.time.LocalTime
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun HomeScreen(
@@ -54,7 +74,7 @@ fun HomeScreen(
     val currentPreset by vm.currentPreset.observeAsState(null)
     val hasSeenHints by vm.hasSeenHints.observeAsState(false)
 
-    val hour = remember { LocalTime.now().hour }
+    val hour = remember { java.time.LocalTime.now().hour }
 
     var showBottleSheet by remember { mutableStateOf(false) }
     var showSleepTypePicker by remember { mutableStateOf(false) }
@@ -65,91 +85,34 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(SWSpacing.lg),
+                .padding(horizontal = SWSpacing.lg)
+                .padding(top = SWSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)
         ) {
-            Column {
-                BasicText(
-                    text = stringResource(greetingForHour(hour)),
-                    style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
-                )
-                baby?.let {
-                    BasicText(
-                        text = it.name,
-                        style = SWFont.titleLG().copy(color = SWColor.primary(scheme))
-                    )
-                }
-            }
+            GreetingSection(babyName = baby?.name, dobMs = baby?.dateOfBirth, hour = hour)
 
             if (!hasSeenHints) {
                 OnboardingHintsCard(onDismiss = vm::onDismissHints)
             }
 
             wakeWindow?.let { (remaining, total) ->
-                GlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Column {
-                        BasicText(
-                            text = stringResource(R.string.home_wakewindow_title),
-                            style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
-                        )
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            RollingNumber(
-                                value = remaining,
-                                style = SWFont.displayMD().copy(color = SWColor.textPrimary(scheme))
-                            )
-                            BasicText(
-                                text = " / $total ${stringResource(R.string.home_wakewindow_unit)}",
-                                style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme)),
-                                modifier = Modifier.padding(bottom = 6.dp)
-                            )
-                        }
-                    }
-                }
+                WakeWindowCard(remaining = remaining, total = total)
             }
 
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.padding(end = SWSpacing.md)) {
-                        BasicText(
-                            text = currentPreset
-                                ?.let { stringResource(audioPresetNameKey(it.nameKey)) }
-                                ?: stringResource(R.string.home_nowplaying_placeholder),
-                            style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-                        )
-                    }
-                    AudioWaveform(
-                        modifier = Modifier.weight(1f),
-                        isPlaying = playerState is PlayerState.Playing,
-                        color = SWColor.accent(scheme)
-                    )
-                }
-            }
-            SoftButton(
-                text = stringResource(R.string.player_header),
-                onClick = onOpenPlayer,
-                style = SoftButtonStyle.GHOST
+            NowPlayingCard(
+                presetName = currentPreset?.let { stringResource(audioPresetNameKey(it.nameKey)) },
+                isPlaying = playerState is PlayerState.Playing,
+                onClick = onOpenPlayer
             )
 
-            QuickActionsRow(vm, onBottleTap = { showBottleSheet = true })
+            QuickActionsGrid(vm, onBottleTap = { showBottleSheet = true })
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onLongPress = { showSleepTypePicker = true },
-                            onTap = { vm.onTapSleep() }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                PulseRing(color = SWColor.accent(scheme), radius = 80.dp)
-                SoftButton(
-                    text = stringResource(R.string.home_sleepcta),
-                    onClick = vm::onTapSleep,
-                    style = SoftButtonStyle.ACCENT
-                )
-            }
+            SleepCTA(
+                onTap = vm::onTapSleep,
+                onLongPress = { showSleepTypePicker = true }
+            )
+
+            Spacer(Modifier.height(SWSpacing.huge))
         }
 
         if (showBottleSheet) {
@@ -169,25 +132,195 @@ fun HomeScreen(
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Section composables
+// ──────────────────────────────────────────────────────────────────────────────
+
 @Composable
-private fun QuickActionsRow(vm: HomeViewModel, onBottleTap: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)
-    ) {
-        QuickAction(stringResource(R.string.quickaction_breastleft)) { vm.onRecordFeeding(FeedingMethod.BREAST_LEFT) }
-        QuickAction(stringResource(R.string.quickaction_breastright)) { vm.onRecordFeeding(FeedingMethod.BREAST_RIGHT) }
-        QuickAction(stringResource(R.string.quickaction_bottle), onBottleTap)
-        QuickAction(stringResource(R.string.quickaction_diaper)) { vm.onRecordDiaper(DiaperEvent.DiaperType.WET) }
+private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
+    val scheme = LocalSWScheme.current
+    val daysOld = remember(dobMs) {
+        dobMs?.let {
+            val birth = LocalDate.ofEpochDay(it / 86_400_000L)
+            val today = LocalDate.now(ZoneId.systemDefault())
+            ChronoUnit.DAYS.between(birth, today).toInt().coerceAtLeast(0)
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            BasicText(
+                text = stringResource(greetingForHour(hour)),
+                style = SWFont.serifItalic(17).copy(color = SWColor.textPrimary(scheme))
+            )
+            babyName?.let {
+                BasicText(text = "  $it", style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme)))
+            }
+        }
+        daysOld?.let {
+            BasicText(
+                text = stringResource(R.string.home_daycount, it),
+                style = SWFont.bodyMD().copy(color = SWColor.textTertiary(scheme))
+            )
+        }
     }
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.RowScope.QuickAction(label: String, onTap: () -> Unit) {
-    SoftButton(
-        text = label,
-        onClick = onTap,
-        style = SoftButtonStyle.GHOST,
-        modifier = Modifier.weight(1f)
-    )
+private fun WakeWindowCard(remaining: Int, total: Int) {
+    val scheme = LocalSWScheme.current
+    val color = when {
+        remaining > 20 -> SWColor.textPrimary(scheme)
+        remaining > 0 -> SWColor.warning(scheme)
+        else -> SWColor.danger(scheme)
+    }
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(SWSpacing.xl),
+        elevation = ElevationLevel.STRONG
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+            BasicText(
+                text = stringResource(R.string.home_wakewindow_title).uppercase(),
+                style = SWFont.labelMD().copy(
+                    color = SWColor.textSecondary(scheme),
+                    letterSpacing = 1.4.sp
+                )
+            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                RollingNumber(
+                    value = remaining,
+                    style = SWFont.displayLGTabular().copy(color = color)
+                )
+                Spacer(Modifier.width(SWSpacing.xs))
+                BasicText(
+                    text = stringResource(R.string.home_wakewindow_unit),
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontSize = 28.sp,
+                        color = SWColor.textSecondary(scheme)
+                    ),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            // progress bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(SWColor.border(scheme).copy(alpha = 0.3f))
+            ) {
+                val frac = (remaining.toFloat() / total.coerceAtLeast(1)).coerceIn(0f, 1f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(frac)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(com.lizhi1026.sleepwhisper.core.visualkit.SWGradient.accent(scheme))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NowPlayingCard(presetName: String?, isPlaying: Boolean, onClick: () -> Unit) {
+    val scheme = LocalSWScheme.current
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        contentPadding = PaddingValues(SWSpacing.md)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(SWSpacing.md)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (scheme == SWScheme.DAY) SWColor.softLilac(scheme)
+                        else SWColor.primary(scheme)
+                    )
+            )
+            BasicText(
+                modifier = Modifier.widthIn(min = 0.dp),
+                text = presetName ?: stringResource(R.string.home_nowplaying_placeholder),
+                style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+            )
+            Spacer(Modifier.fillMaxWidth(0.0001f))
+            AudioWaveform(
+                modifier = Modifier.height(22.dp),
+                isPlaying = isPlaying,
+                color = SWColor.accent(scheme)
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+            QuickActionTile(
+                label = stringResource(R.string.quickaction_breastleft),
+                tint = TileTint.PEACH,
+                onTap = { vm.onRecordFeeding(FeedingMethod.BREAST_LEFT) },
+                modifier = Modifier.weight(1f)
+            )
+            QuickActionTile(
+                label = stringResource(R.string.quickaction_breastright),
+                tint = TileTint.PEACH,
+                onTap = { vm.onRecordFeeding(FeedingMethod.BREAST_RIGHT) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+            QuickActionTile(
+                label = stringResource(R.string.quickaction_bottle),
+                tint = TileTint.LILAC,
+                onTap = onBottleTap,
+                onLongPress = { vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = null) },
+                modifier = Modifier.weight(1f)
+            )
+            QuickActionTile(
+                label = stringResource(R.string.quickaction_diaper),
+                tint = TileTint.MINT,
+                onTap = { vm.onRecordDiaper(DiaperEvent.DiaperType.WET) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SleepCTA(onTap: () -> Unit, onLongPress: () -> Unit) {
+    val scheme = LocalSWScheme.current
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = SWSpacing.md),
+        contentAlignment = Alignment.Center
+    ) {
+        PulseRing(color = SWColor.accent(scheme), radius = 110.dp)
+        Box(
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .fillMaxWidth()
+                .pointerInput(onTap, onLongPress) {
+                    detectTapGestures(
+                        onLongPress = { onLongPress() },
+                        onTap = { onTap() }
+                    )
+                }
+        ) {
+            SoftButton(
+                text = stringResource(R.string.home_sleepcta),
+                onClick = onTap,
+                style = SoftButtonStyle.ACCENT,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }

@@ -38,4 +38,15 @@ object SWFont {
 
     fun displayXLTabular(): TextStyle =
         TextStyle(fontSize = 96.sp, fontWeight = FontWeight.SemiBold, fontFamily = rounded, fontFeatureSettings = TNUM)
+
+    /**
+     * Serif italic — port of iOS `.system(size:, .regular, .serif).italic()` used on the
+     * Onboarding hero, Welcome greeting, Sleeping title, Trends/Settings headers.
+     */
+    fun serifItalic(size: Int): TextStyle = TextStyle(
+        fontSize = size.sp,
+        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.Serif,
+        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+    )
 }

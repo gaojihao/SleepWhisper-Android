@@ -4,22 +4,28 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
@@ -27,6 +33,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.EmptyStateCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 
@@ -39,6 +46,7 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
     val todayFeedings by vm.todayFeedings.observeAsState(emptyList())
     val recent by vm.recentEvents.observeAsState(emptyList())
     val hasAnyData by vm.hasAnyData.observeAsState(false)
+    val baby by vm.app.baby.observeAsState(null)
 
     Box(modifier = Modifier.fillMaxSize()) {
         BreathingBackground()
@@ -46,13 +54,11 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(SWSpacing.lg),
+                .padding(horizontal = SWSpacing.lg)
+                .padding(top = SWSpacing.md),
             verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)
         ) {
-            BasicText(
-                stringResource(R.string.trends_title),
-                style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
-            )
+            Header(babyName = baby?.name)
 
             if (!hasAnyData) {
                 EmptyStateCard(
@@ -60,42 +66,11 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
                     subtitleRes = R.string.trends_empty_subtitle
                 )
             } else {
-                // Today 24-hour timeline
-                GlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Column {
-                        BasicText(
-                            stringResource(R.string.trends_today),
-                            style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-                        )
-                        TodayTimeline(
-                            sleeps = todaySleeps,
-                            feedings = todayFeedings,
-                            modifier = Modifier.padding(top = SWSpacing.sm)
-                        )
-                    }
+                TodayCard(todaySleeps, todayFeedings)
+                if (recent.isNotEmpty()) {
+                    RecentEventsList(events = recent, onLongPress = vm::beginEdit)
                 }
-
-                // Recent events with long-press to edit
-                RecentEventsList(
-                    events = recent,
-                    onLongPress = vm::beginEdit
-                )
-
-                // Weekly bar chart
-                GlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Column {
-                        BasicText(
-                            stringResource(R.string.trends_week_title),
-                            style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-                        )
-                        val avgHours = buckets.sumOf { it.second }.toDouble() / 3600.0 / 7.0
-                        BasicText(
-                            stringResource(R.string.trends_week_avg, avgHours),
-                            style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
-                        )
-                        WeeklyBars(buckets)
-                    }
-                }
+                WeeklyCard(buckets)
             }
 
             if (hasAnyData && rec == null) {
@@ -104,6 +79,78 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
                     subtitleRes = R.string.trends_aiasleep_subtitle
                 )
             }
+            Spacer(Modifier.height(SWSpacing.huge))
+        }
+    }
+}
+
+@Composable
+private fun Header(babyName: String?) {
+    val scheme = LocalSWScheme.current
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
+        BasicText(
+            text = stringResource(R.string.trends_title),
+            style = SWFont.serifItalic(28).copy(color = SWColor.textPrimary(scheme))
+        )
+        BasicText(
+            text = stringResource(R.string.trends_subtitle, babyName ?: "").uppercase(),
+            style = SWFont.labelMD().copy(
+                color = SWColor.textSecondary(scheme),
+                letterSpacing = 1.2.sp
+            )
+        )
+    }
+}
+
+@Composable
+private fun TodayCard(
+    sleeps: List<com.lizhi1026.sleepwhisper.model.SleepSession>,
+    feedings: List<com.lizhi1026.sleepwhisper.model.FeedingEvent>
+) {
+    val scheme = LocalSWScheme.current
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 22.dp,
+        contentPadding = PaddingValues(SWSpacing.lg),
+        elevation = ElevationLevel.MEDIUM
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+            BasicText(
+                text = stringResource(R.string.trends_today),
+                style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+            )
+            TodayTimeline(sleeps = sleeps, feedings = feedings)
+        }
+    }
+}
+
+@Composable
+private fun WeeklyCard(buckets: List<Pair<String, Long>>) {
+    val scheme = LocalSWScheme.current
+    val totalSec = buckets.sumOf { it.second }
+    val avgHours = totalSec.toDouble() / 3600.0 / 7.0
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 22.dp,
+        contentPadding = PaddingValues(SWSpacing.lg),
+        elevation = ElevationLevel.MEDIUM
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.md)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                BasicText(
+                    text = stringResource(R.string.trends_week_title),
+                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                )
+                BasicText(
+                    text = stringResource(R.string.trends_week_avg, avgHours),
+                    style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
+                )
+            }
+            WeeklyBars(buckets)
         }
     }
 }
@@ -112,23 +159,34 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
 private fun WeeklyBars(buckets: List<Pair<String, Long>>) {
     val scheme = LocalSWScheme.current
     val maxSec = buckets.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
+    val today = buckets.lastOrNull()
     Row(
-        modifier = Modifier.fillMaxWidth().height(140.dp),
-        horizontalArrangement = Arrangement.spacedBy(SWSpacing.xs)
+        modifier = Modifier.fillMaxWidth().height(200.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom
     ) {
         buckets.forEach { (label, secs) ->
-            Column(modifier = Modifier.weight(1f).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
-                Canvas(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                    val barH = (secs.toFloat() / maxSec) * size.height
-                    drawRoundRect(
-                        color = SWColor.accent(scheme),
-                        topLeft = Offset(0f, size.height - barH),
-                        size = Size(size.width, barH),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f)
-                    )
+            val isToday = (label == today?.first)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)
+            ) {
+                Box(modifier = Modifier.height(180.dp), contentAlignment = Alignment.BottomCenter) {
+                    val barH = (secs.toFloat() / maxSec) * 180f
+                    Canvas(modifier = Modifier.width(22.dp).height(180.dp)) {
+                        val h = (secs.toFloat() / maxSec) * size.height
+                        val capsuleH = h.coerceAtLeast(8.dp.toPx())
+                        drawRoundRect(
+                            color = if (isToday) SWColor.accent(scheme)
+                                    else SWColor.primary(scheme).copy(alpha = 0.7f),
+                            topLeft = Offset(0f, size.height - capsuleH),
+                            size = Size(size.width, capsuleH),
+                            cornerRadius = CornerRadius(size.width / 2f)
+                        )
+                    }
                 }
                 BasicText(
-                    label,
+                    text = label,
                     style = SWFont.labelSM().copy(color = SWColor.textSecondary(scheme))
                 )
             }
