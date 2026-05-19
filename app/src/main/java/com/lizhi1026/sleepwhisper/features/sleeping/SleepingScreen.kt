@@ -19,8 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
@@ -51,7 +53,7 @@ fun SleepingScreen(vm: SleepingViewModel = hiltViewModel()) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BasicText(
-                text = "Protecting ${baby?.name ?: ""}'s sleep",
+                text = stringResource(R.string.sleeping_title_protecting, baby?.name ?: ""),
                 style = SWFont.titleMD().copy(color = SWColor.textSecondary(SWScheme.DARK))
             )
             BasicText(
@@ -66,19 +68,19 @@ fun SleepingScreen(vm: SleepingViewModel = hiltViewModel()) {
             ) {
                 PulseRing(color = SWColor.accent(SWScheme.DARK), radius = 100.dp)
                 BasicText(
-                    text = "Long-press to wake",
+                    text = stringResource(R.string.sleeping_wake_longpress),
                     style = SWFont.bodyMD().copy(color = SWColor.textSecondary(SWScheme.DARK))
                 )
             }
             if (playerState is PlayerState.Playing) {
                 SoftButton(
-                    text = "Pause audio",
+                    text = stringResource(R.string.sleeping_pause),
                     onClick = vm::pausePlayer,
                     style = SoftButtonStyle.GHOST
                 )
             } else if (playerState is PlayerState.Paused) {
                 SoftButton(
-                    text = "Resume audio",
+                    text = stringResource(R.string.sleeping_resume),
                     onClick = vm::resumePlayer,
                     style = SoftButtonStyle.GHOST
                 )

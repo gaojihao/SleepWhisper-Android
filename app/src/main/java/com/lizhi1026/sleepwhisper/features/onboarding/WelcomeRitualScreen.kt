@@ -12,8 +12,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.app.AppStateContainer
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
@@ -41,7 +42,7 @@ fun WelcomeRitualScreen(app: AppStateContainer, vm: WelcomeRitualViewModel = hil
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BasicText(
-                text = "Welcome",
+                text = stringResource(R.string.welcome_greeting),
                 style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
             )
             BasicText(
@@ -49,12 +50,12 @@ fun WelcomeRitualScreen(app: AppStateContainer, vm: WelcomeRitualViewModel = hil
                 style = SWFont.displayLG().copy(color = SWColor.primary(scheme))
             )
             BasicText(
-                text = "Sleep well, little one.",
+                text = stringResource(R.string.welcome_message_baby),
                 style = SWFont.bodyLG().copy(color = SWColor.textSecondary(scheme)),
                 modifier = Modifier.padding(top = SWSpacing.lg)
             )
             SoftButton(
-                text = "Continue",
+                text = stringResource(R.string.welcome_taptocontinue),
                 onClick = { app.dismissWelcome() },
                 modifier = Modifier.padding(top = SWSpacing.xxl)
             )

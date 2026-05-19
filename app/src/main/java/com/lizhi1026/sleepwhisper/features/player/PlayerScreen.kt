@@ -15,10 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
+import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
@@ -46,12 +49,16 @@ fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
     Box(modifier = Modifier.fillMaxSize()) {
         BreathingBackground()
         Column(modifier = Modifier.fillMaxSize().padding(SWSpacing.lg), verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)) {
-            BasicText("Player", style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme)))
+            BasicText(stringResource(R.string.player_header),
+                style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme)))
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
-                    BasicText("Duration", style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme)))
+                    BasicText(stringResource(R.string.player_duration_label),
+                        style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme)))
                     SWSegmentedPicker(
-                        options = listOf(15, 30, 45, 60, 90).map { SegmentedOption(it, "$it min") },
+                        options = listOf(15, 30, 45, 60, 90).map { m ->
+                            SegmentedOption(m, stringResource(R.string.player_duration_minutes, m))
+                        },
                         selected = minutesNow,
                         onSelect = { m -> vm.saveDefaultTimer(m) }
                     )
@@ -64,14 +71,15 @@ fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
                 if (rec.isNotEmpty()) {
                     item {
                         BasicText(
-                            "Recommended for $ageMonths mo",
+                            stringResource(R.string.player_section_recommended, ageMonths),
                             style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
                         )
                     }
                     items(rec, key = { it.id }) { p -> PresetRow(p, currentId == p.id) { onTap(p, minutesNow, vm) } }
                 }
                 item {
-                    BasicText("All presets", style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme)))
+                    BasicText(stringResource(R.string.player_section_all),
+                        style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme)))
                 }
                 items(rest, key = { it.id }) { p -> PresetRow(p, currentId == p.id) { onTap(p, minutesNow, vm) } }
             }
@@ -83,19 +91,19 @@ fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
 private fun PresetRow(preset: AudioPreset, isPlaying: Boolean, onTap: () -> Unit) {
     val scheme = LocalSWScheme.current
     GlassCard(modifier = Modifier.fillMaxWidth().clickable(onClick = onTap)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.padding(end = SWSpacing.md)) {
                 BasicText(
-                    preset.nameKey.removePrefix("audio."),
+                    stringResource(audioPresetNameKey(preset.nameKey)),
                     style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
                 )
                 BasicText(
-                    "${preset.recommendedAgeMinMonths}–${preset.recommendedAgeMaxMonths} mo",
+                    stringResource(R.string.player_preset_agerange, preset.recommendedAgeMinMonths, preset.recommendedAgeMaxMonths),
                     style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
                 )
             }
             if (isPlaying) {
-                BasicText("● Playing", style = SWFont.labelMD().copy(color = SWColor.accent(scheme)))
+                BasicText("●", style = SWFont.labelMD().copy(color = SWColor.accent(scheme)))
             }
         }
     }

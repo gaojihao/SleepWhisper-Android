@@ -16,8 +16,10 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
@@ -34,19 +36,27 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
     Box(modifier = Modifier.fillMaxSize()) {
         BreathingBackground()
         Column(modifier = Modifier.fillMaxSize().padding(SWSpacing.lg), verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)) {
-            BasicText("Trends", style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme)))
+            BasicText(
+                stringResource(R.string.trends_title),
+                style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
+            )
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
                     BasicText(
-                        "Last 7 days · total sleep",
+                        stringResource(R.string.trends_week_title),
                         style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
                     )
                     if (buckets.isEmpty()) {
                         BasicText(
-                            "No data yet — log a sleep session to see trends.",
+                            stringResource(R.string.trends_empty_subtitle),
                             style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
                         )
                     } else {
+                        val avgHours = buckets.sumOf { it.second }.toDouble() / 3600.0 / 7.0
+                        BasicText(
+                            stringResource(R.string.trends_week_avg, avgHours),
+                            style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
+                        )
                         WeeklyBars(buckets)
                     }
                 }
@@ -54,8 +64,12 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
             rec?.let {
                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                     BasicText(
-                        "Next window: ${it.wakeWindowMinutes} min (confidence ${(it.confidence * 100).toInt()}%)",
-                        style = SWFont.bodyMD().copy(color = SWColor.textPrimary(scheme))
+                        stringResource(R.string.trends_aiasleep_title),
+                        style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                    )
+                    BasicText(
+                        text = "${it.wakeWindowMinutes} ${stringResource(R.string.home_wakewindow_unit)} · ${(it.confidence * 100).toInt()}%",
+                        style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
                     )
                 }
             }
