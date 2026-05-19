@@ -1,3 +1,16 @@
 <resources>
-    <string name="app_name">SleepWhisper-android</string>
+    <string name="app_name">SleepWhisper</string>
+
+    <!-- Foreground service notification (used by PlaybackForegroundService) -->
+    <string name="fg_notification_title">SleepWhisper</string>
+    <string name="fg_notification_text">Playing audio and listening for cries</string>
+    <string name="fg_channel_name">Playback &amp; cry detection</string>
+    <string name="fg_channel_desc">Persistent notification while audio plays or cry detection is active</string>
+
+    <!-- Notification channels for alarms -->
+    <string name="ch_sleep_checkin">Sleep check-in</string>
+    <string name="ch_rec_window">Wake window reminder</string>
+
+    <!-- Toasts -->
+    <string name="toast_exact_alarm_needed">Grant "Alarms &amp; reminders" in system Settings for precise notifications.</string>
 </resources>

@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">SleepWhisper</string>
+
+    <string name="fg_notification_title">SleepWhisper</string>
+    <string name="fg_notification_text">正在播放音频并监听哭声</string>
+    <string name="fg_channel_name">播放与哭声检测</string>
+    <string name="fg_channel_desc">播放音频或开启哭声检测时显示的持续通知</string>
+
+    <string name="ch_sleep_checkin">入睡检查</string>
+    <string name="ch_rec_window">清醒窗口提醒</string>
+
+    <string name="toast_exact_alarm_needed">请在系统设置中授予"闹钟和提醒"权限以获得准时通知。</string>
+</resources>
