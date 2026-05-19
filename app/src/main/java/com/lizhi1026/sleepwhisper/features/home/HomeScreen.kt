@@ -1,5 +1,6 @@
 package com.lizhi1026.sleepwhisper.features.home
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +14,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -47,8 +51,12 @@ fun HomeScreen(
     val wakeWindow by vm.cachedWakeWindow.observeAsState(null)
     val playerState by vm.playerState.observeAsState(PlayerState.Idle)
     val currentPreset by vm.currentPreset.observeAsState(null)
+    val hasSeenHints by vm.hasSeenHints.observeAsState(false)
 
     val hour = remember { LocalTime.now().hour }
+
+    var showBottleSheet by remember { mutableStateOf(false) }
+    var showSleepTypePicker by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         BreathingBackground()
@@ -70,6 +78,10 @@ fun HomeScreen(
                         style = SWFont.titleLG().copy(color = SWColor.primary(scheme))
                     )
                 }
+            }
+
+            if (!hasSeenHints) {
+                OnboardingHintsCard(onDismiss = vm::onDismissHints)
             }
 
             wakeWindow?.let { (remaining, total) ->
@@ -117,9 +129,19 @@ fun HomeScreen(
                 style = SoftButtonStyle.GHOST
             )
 
-            QuickActionsRow(vm)
+            QuickActionsRow(vm, onBottleTap = { showBottleSheet = true })
 
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onLongPress = { showSleepTypePicker = true },
+                            onTap = { vm.onTapSleep() }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
                 PulseRing(color = SWColor.accent(scheme), radius = 80.dp)
                 SoftButton(
                     text = stringResource(R.string.home_sleepcta),
@@ -128,18 +150,33 @@ fun HomeScreen(
                 )
             }
         }
+
+        if (showBottleSheet) {
+            BottleAmountSheet(
+                onConfirm = { ml -> vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = ml) },
+                onSkip = { vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = null) },
+                onDismiss = { showBottleSheet = false }
+            )
+        }
+        if (showSleepTypePicker) {
+            SleepTypePicker(
+                suggestedType = vm.app.defaultSleepType(),
+                onPick = { type -> vm.onPickSleepType(type) },
+                onDismiss = { showSleepTypePicker = false }
+            )
+        }
     }
 }
 
 @Composable
-private fun QuickActionsRow(vm: HomeViewModel) {
+private fun QuickActionsRow(vm: HomeViewModel, onBottleTap: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)
     ) {
         QuickAction(stringResource(R.string.quickaction_breastleft)) { vm.onRecordFeeding(FeedingMethod.BREAST_LEFT) }
         QuickAction(stringResource(R.string.quickaction_breastright)) { vm.onRecordFeeding(FeedingMethod.BREAST_RIGHT) }
-        QuickAction(stringResource(R.string.quickaction_bottle)) { vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = 120) }
+        QuickAction(stringResource(R.string.quickaction_bottle), onBottleTap)
         QuickAction(stringResource(R.string.quickaction_diaper)) { vm.onRecordDiaper(DiaperEvent.DiaperType.WET) }
     }
 }

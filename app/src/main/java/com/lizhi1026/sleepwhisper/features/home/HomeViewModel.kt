@@ -8,6 +8,7 @@ import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.model.Baby
 import com.lizhi1026.sleepwhisper.model.DiaperEvent
 import com.lizhi1026.sleepwhisper.model.FeedingEvent.FeedingMethod
+import com.lizhi1026.sleepwhisper.model.SleepSession.SleepType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,6 +41,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { app.recordDiaper(type) }
 
     fun onTapSleep() = viewModelScope.launch { app.startSleep() }
+
+    fun onPickSleepType(type: SleepType) = viewModelScope.launch { app.startSleep(type) }
 
     fun onDismissHints() = app.markHintsSeen()
 }

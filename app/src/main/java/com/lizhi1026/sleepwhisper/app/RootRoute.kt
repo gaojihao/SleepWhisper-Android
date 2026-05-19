@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,13 +30,16 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWTheme
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ToastOverlay
+import com.lizhi1026.sleepwhisper.features.home.EventEditSheet
 import com.lizhi1026.sleepwhisper.features.home.HomeScreen
 import com.lizhi1026.sleepwhisper.features.onboarding.OnboardingScreen
 import com.lizhi1026.sleepwhisper.features.onboarding.WelcomeRitualScreen
 import com.lizhi1026.sleepwhisper.features.player.PlayerScreen
 import com.lizhi1026.sleepwhisper.features.settings.SettingsScreen
+import com.lizhi1026.sleepwhisper.features.sleeping.SleepSummaryOverlay
 import com.lizhi1026.sleepwhisper.features.sleeping.SleepingScreen
 import com.lizhi1026.sleepwhisper.features.trends.TrendsScreen
+import kotlinx.coroutines.launch
 
 /** Root composable wiring [AppStateContainer.rootKey] to the four top-level destinations. */
 @Composable
@@ -44,6 +48,10 @@ fun RootRoute(app: AppStateContainer) {
     SWTheme(scheme) {
         val rootKey by app.rootKey.observeAsState("onboarding")
         val toast by app.toast.events.observeAsState(null)
+        val summary by app.lastSleepSummary.observeAsState(null)
+        val baby by app.baby.observeAsState(null)
+        val editTarget by app.pendingEditTarget.observeAsState(null)
+        val scope = rememberCoroutineScope()
 
         Box(modifier = Modifier.fillMaxSize()) {
             Crossfade(targetState = rootKey, animationSpec = tween(SWMotion.screenInMs), label = "root") { key ->
@@ -54,6 +62,24 @@ fun RootRoute(app: AppStateContainer) {
                     else         -> MainScaffold()
                 }
             }
+
+            summary?.let { s ->
+                SleepSummaryOverlay(
+                    summary = s,
+                    babyName = baby?.name,
+                    onDismiss = app::clearSleepSummary
+                )
+            }
+
+            editTarget?.let { t ->
+                EventEditSheet(
+                    target = t,
+                    onDismiss = app::clearPendingEdit,
+                    onSaveFeeding = { f -> scope.launch { app.updateFeeding(f) } },
+                    onSaveDiaper = { d -> scope.launch { app.updateDiaper(d) } }
+                )
+            }
+
             ToastOverlay(
                 item = toast,
                 onDismiss = app.toast::consume,
