@@ -1,7 +1,9 @@
 package com.lizhi1026.sleepwhisper.features.home
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -10,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
@@ -23,8 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
@@ -46,15 +48,16 @@ enum class TileTint { PEACH, MINT, LILAC }
 
 /**
  * Square quick-action tile — port of iOS Features/Home/QuickActionTile.swift.
- * Renders a small tinted icon circle + label inside a GlassCard. Press → onTap;
- * if [onLongPress] is non-null, holding ≥ 500ms fires it once and suppresses the tap.
  *
- * iOS spec: card height 70dp, icon circle 44dp, label labelMD, press scale 0.97.
+ * Layout: 40dp tinted icon circle + labelMD, vertically stacked inside a GlassCard.
+ * Wraps content height so the label is never clipped (was previously fixed at 70dp +
+ * 16dp padding, which only left 38dp for the 44dp icon and pushed the label off-screen).
  */
 @Composable
 fun QuickActionTile(
     label: String,
     tint: TileTint,
+    @DrawableRes iconRes: Int,
     onTap: () -> Unit,
     onLongPress: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -66,16 +69,20 @@ fun QuickActionTile(
         animationSpec = tween(SWMotion.pressInMs),
         label = "tile-scale"
     )
-    val tintColor = when (tint) {
+    val tintBg = when (tint) {
         TileTint.PEACH -> SWColor.softPeach(scheme)
         TileTint.MINT -> SWColor.softMint(scheme)
         TileTint.LILAC -> SWColor.softLilac(scheme)
+    }
+    val iconTint = when (tint) {
+        TileTint.PEACH -> SWColor.danger(scheme)    // warm coral, reads well over peach
+        TileTint.MINT -> SWColor.success(scheme)
+        TileTint.LILAC -> SWColor.primary(scheme)
     }
 
     GlassCard(
         modifier = modifier
             .scale(scale)
-            .height(70.dp)
             .semantics(mergeDescendants = true) {
                 contentDescription = label
                 role = Role.Button
@@ -95,7 +102,7 @@ fun QuickActionTile(
                     onTap = { onTap() }
                 )
             },
-        contentPadding = PaddingValues(SWSpacing.md),
+        contentPadding = PaddingValues(SWSpacing.sm),
         elevation = ElevationLevel.SOFT
     ) {
         Column(
@@ -105,18 +112,16 @@ fun QuickActionTile(
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(tintColor),
+                    .background(tintBg),
                 contentAlignment = Alignment.Center
             ) {
-                // Icon placeholder — a small inner circle marks the tile (icon
-                // assets per-action are not yet rasterized).
-                Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(SWColor.textPrimary(scheme).copy(alpha = 0.6f))
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(iconTint),
+                    modifier = Modifier.size(20.dp)
                 )
             }
             BasicText(

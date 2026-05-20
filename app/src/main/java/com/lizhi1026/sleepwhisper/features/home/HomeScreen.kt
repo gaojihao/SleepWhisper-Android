@@ -101,6 +101,7 @@ fun HomeScreen(
             }
 
             NowPlayingCard(
+                presetIconName = currentPreset?.iconName,
                 presetName = currentPreset?.let { stringResource(audioPresetNameKey(it.nameKey)) },
                 isPlaying = playerState is PlayerState.Playing,
                 onClick = onOpenPlayer
@@ -224,8 +225,19 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
 }
 
 @Composable
-private fun NowPlayingCard(presetName: String?, isPlaying: Boolean, onClick: () -> Unit) {
+private fun NowPlayingCard(
+    presetIconName: String?,
+    presetName: String?,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
     val scheme = LocalSWScheme.current
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val presetIconRes = remember(presetIconName) {
+        presetIconName?.let { name ->
+            ctx.resources.getIdentifier(name, "drawable", ctx.packageName).takeIf { it != 0 }
+        }
+    }
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -236,6 +248,7 @@ private fun NowPlayingCard(presetName: String?, isPlaying: Boolean, onClick: () 
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SWSpacing.md)
         ) {
+            // Left icon circle (52dp) — preset icon if known, else "moon" placeholder
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -243,19 +256,40 @@ private fun NowPlayingCard(presetName: String?, isPlaying: Boolean, onClick: () 
                     .background(
                         if (scheme == SWScheme.DAY) SWColor.softLilac(scheme)
                         else SWColor.primary(scheme)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                val iconRes = presetIconRes ?: R.drawable.ic_empty_moon
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = iconRes),
+                    contentDescription = null,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                        if (scheme == SWScheme.DAY) SWColor.primary(scheme) else androidx.compose.ui.graphics.Color.White
+                    ),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            // Middle: title + (waveform when playing)
+            Column(modifier = Modifier.weight(1f)) {
+                BasicText(
+                    text = presetName ?: stringResource(R.string.home_nowplaying_placeholder),
+                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                )
+                if (isPlaying) {
+                    AudioWaveform(
+                        modifier = Modifier.height(18.dp).padding(top = 4.dp),
+                        isPlaying = true,
+                        color = SWColor.accent(scheme),
+                        barCount = 24
                     )
-            )
-            BasicText(
-                modifier = Modifier.widthIn(min = 0.dp),
-                text = presetName ?: stringResource(R.string.home_nowplaying_placeholder),
-                style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-            )
-            Spacer(Modifier.fillMaxWidth(0.0001f))
-            AudioWaveform(
-                modifier = Modifier.height(22.dp),
-                isPlaying = isPlaying,
-                color = SWColor.accent(scheme),
-                barCount = 24
+                }
+            }
+            // Right chevron
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_chevron_right),
+                contentDescription = null,
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(SWColor.textSecondary(scheme)),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
@@ -268,12 +302,14 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
             QuickActionTile(
                 label = stringResource(R.string.quickaction_breastleft),
                 tint = TileTint.PEACH,
+                iconRes = R.drawable.ic_action_breast_left,
                 onTap = { vm.onRecordFeeding(FeedingMethod.BREAST_LEFT) },
                 modifier = Modifier.weight(1f)
             )
             QuickActionTile(
                 label = stringResource(R.string.quickaction_breastright),
                 tint = TileTint.PEACH,
+                iconRes = R.drawable.ic_action_breast_right,
                 onTap = { vm.onRecordFeeding(FeedingMethod.BREAST_RIGHT) },
                 modifier = Modifier.weight(1f)
             )
@@ -282,6 +318,7 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
             QuickActionTile(
                 label = stringResource(R.string.quickaction_bottle),
                 tint = TileTint.LILAC,
+                iconRes = R.drawable.ic_action_bottle,
                 onTap = onBottleTap,
                 onLongPress = { vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = null) },
                 modifier = Modifier.weight(1f)
@@ -289,6 +326,7 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
             QuickActionTile(
                 label = stringResource(R.string.quickaction_diaper),
                 tint = TileTint.MINT,
+                iconRes = R.drawable.ic_action_diaper,
                 onTap = { vm.onRecordDiaper(DiaperEvent.DiaperType.WET) },
                 modifier = Modifier.weight(1f)
             )
@@ -308,8 +346,9 @@ private fun SleepCTA(onTap: () -> Unit, onLongPress: () -> Unit) {
         PulseRing(
             color = SWColor.accent(scheme),
             radius = 110.dp,
-            intensity = if (scheme == SWScheme.DAY) com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.SOFT
-                        else com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.STRONG
+            // STRONG on every scheme — iOS-equivalent visibility per real-device feedback;
+            // SOFT was too dim against the warm-orange CTA on light backgrounds.
+            intensity = com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.STRONG
         )
         Box(
             modifier = Modifier
@@ -326,6 +365,7 @@ private fun SleepCTA(onTap: () -> Unit, onLongPress: () -> Unit) {
                 text = stringResource(R.string.home_sleepcta),
                 onClick = onTap,
                 style = SoftButtonStyle.ACCENT,
+                leadingIconRes = R.drawable.ic_moon_zzz,
                 modifier = Modifier.fillMaxWidth()
             )
         }

@@ -1,7 +1,9 @@
 package com.lizhi1026.sleepwhisper.core.visualkit.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -23,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
@@ -46,6 +51,7 @@ fun SoftButton(
     modifier: Modifier = Modifier,
     style: SoftButtonStyle = SoftButtonStyle.PRIMARY,
     enabled: Boolean = true,
+    @DrawableRes leadingIconRes: Int? = null,
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
     val scheme = LocalSWScheme.current
@@ -88,6 +94,14 @@ fun SoftButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SWSpacing.xs)
         ) {
+            if (leadingIconRes != null) {
+                Image(
+                    painter = painterResource(id = leadingIconRes),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(textColor),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             leadingIcon?.invoke()
             BasicText(
                 text = text,
