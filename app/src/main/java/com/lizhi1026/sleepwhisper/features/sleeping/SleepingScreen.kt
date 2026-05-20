@@ -1,10 +1,12 @@
 package com.lizhi1026.sleepwhisper.features.sleeping
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -26,11 +30,13 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -47,7 +53,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
+import com.lizhi1026.sleepwhisper.features.player.PlayerScreen
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
@@ -67,7 +75,10 @@ import com.lizhi1026.sleepwhisper.model.AudioPreset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@OptIn(
+    androidx.compose.animation.ExperimentalSharedTransitionApi::class,
+    androidx.compose.material3.ExperimentalMaterial3Api::class
+)
 @Composable
 fun SleepingScreen(
     sharedScope: androidx.compose.animation.SharedTransitionScope,
@@ -102,6 +113,21 @@ fun SleepingScreen(
             derivedStateOf { vm.app.morphProgress.value }
         }
         val morphScope = rememberCoroutineScope()
+        var dimmed by remember { mutableStateOf(false) }
+        var showMiniPlayer by remember { mutableStateOf(false) }
+        val dimAlpha by animateFloatAsState(
+            targetValue = if (dimmed) 0.24f else 1f,
+            animationSpec = tween(if (LocalReduceMotion.current) 100 else 300),
+            label = "dim-alpha"
+        )
+
+        androidx.activity.compose.BackHandler(enabled = dimmed || showMiniPlayer) {
+            when {
+                showMiniPlayer -> showMiniPlayer = false
+                dimmed -> dimmed = false
+            }
+        }
+
         Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(SWScheme.DARK))) {
             // Star density ramps with morph progress on entry. After the morph settles
             // (morphProgress = 1), density stays at the full 80. Phase 2 replaces this
@@ -138,7 +164,11 @@ fun SleepingScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.systemBars)
-                    .padding(horizontal = SWSpacing.xl),
+                    .padding(horizontal = SWSpacing.xl)
+                    .alpha(dimAlpha)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { dimmed = !dimmed })
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(SWSpacing.xxl, Alignment.CenterVertically)
             ) {
@@ -148,7 +178,12 @@ fun SleepingScreen(
 
                 if (playerState is PlayerState.Playing) {
                     val ps = playerState as PlayerState.Playing
-                    PlayerStatusCard(presetId = ps.presetId, endsAt = ps.endsAt, nowMs = nowMs)
+                    PlayerStatusCard(
+                        presetId = ps.presetId,
+                        endsAt = ps.endsAt,
+                        nowMs = nowMs,
+                        onClick = { showMiniPlayer = true }
+                    )
                 }
 
                 WakeButton(
@@ -162,6 +197,18 @@ fun SleepingScreen(
                     PausePill(label = stringResource(R.string.sleeping_pause), onClick = vm::pausePlayer)
                 } else if (playerState is PlayerState.Paused) {
                     PausePill(label = stringResource(R.string.sleeping_resume), onClick = vm::resumePlayer)
+                }
+            }
+
+            if (showMiniPlayer) {
+                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+                ModalBottomSheet(
+                    onDismissRequest = { showMiniPlayer = false },
+                    sheetState = sheetState
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        PlayerScreen(embedded = true)
+                    }
                 }
             }
         }
@@ -222,11 +269,11 @@ private fun CountdownSection(elapsedSec: Long) {
 }
 
 @Composable
-private fun PlayerStatusCard(presetId: String, endsAt: Long?, nowMs: Long) {
+private fun PlayerStatusCard(presetId: String, endsAt: Long?, nowMs: Long, onClick: () -> Unit) {
     val preset = remember(presetId) { AudioPreset.byId(presetId) }
     val scheme = SWScheme.DARK
     GlassCard(
-        modifier = Modifier,
+        modifier = Modifier.clickable { onClick() },
         cornerRadius = 18.dp,
         elevation = ElevationLevel.MEDIUM
     ) {

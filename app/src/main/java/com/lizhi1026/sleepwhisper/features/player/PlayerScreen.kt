@@ -50,7 +50,10 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.model.AudioPreset
 
 @Composable
-fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
+fun PlayerScreen(
+    embedded: Boolean = false,
+    vm: PlayerViewModel = hiltViewModel()
+) {
     val scheme = LocalSWScheme.current
     val baby by vm.baby.observeAsState(null)
     val settings by vm.settings.observeAsState(null)
@@ -65,7 +68,9 @@ fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
     val rest = vm.allPresets - rec.toSet()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AuroraBackdrop()
+        if (!embedded) {
+            AuroraBackdrop()
+        }
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 DragHandle()
