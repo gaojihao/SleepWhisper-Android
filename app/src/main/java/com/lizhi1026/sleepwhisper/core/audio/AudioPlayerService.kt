@@ -13,8 +13,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asLiveData
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
+import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.model.AudioPreset
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -46,6 +49,7 @@ class AudioPlayerService @Inject constructor(
     val timerEndsAtLive: LiveData<Long?> = _timerEndsAt.asLiveData()
 
     private var player: ExoPlayer? = null
+    private var mediaSession: MediaSession? = null
     private var fadeJob: Job? = null
     private var timerJob: Job? = null
     private var savedVolumeOnFadeStart: Float = 1f
@@ -105,16 +109,33 @@ class AudioPlayerService @Inject constructor(
         val uri = android.net.Uri.parse(
             "android.resource://${context.packageName}/raw/${preset.fileBundleName}"
         )
-        val item = MediaItem.fromUri(uri)
+        val titleRes = context.resources.getIdentifier(
+            preset.nameKey.replace('.', '_'), "string", context.packageName
+        )
+        val title = if (titleRes != 0) context.getString(titleRes) else preset.nameKey
+        val artist = context.getString(R.string.nowplaying_defaultartist)
+        val item = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setArtist(artist)
+                    .setAlbumTitle(context.getString(R.string.nowplaying_album))
+                    .build()
+            )
+            .build()
 
-        val exo = ExoPlayer.Builder(context).build().apply {
+        val exo = (player ?: ExoPlayer.Builder(context).build().also { player = it }).apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
             setMediaItem(item)
             prepare()
             play()
         }
-        player = exo
+
+        if (mediaSession == null) {
+            mediaSession = MediaSession.Builder(context, exo).build()
+        }
         _currentPreset.value = preset
 
         // 1.5 s fade-in iOS-parity
@@ -177,6 +198,8 @@ class AudioPlayerService @Inject constructor(
                 player?.stop()
                 player?.release()
                 player = null
+                mediaSession?.release()
+                mediaSession = null
                 _timerEndsAt.value = null
                 _state.value = PlayerState.Stopped
                 releaseSessionIfNeeded()

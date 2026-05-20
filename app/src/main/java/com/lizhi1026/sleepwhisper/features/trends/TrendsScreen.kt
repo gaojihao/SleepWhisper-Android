@@ -32,6 +32,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
+import com.lizhi1026.sleepwhisper.core.visualkit.floatingY
 import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.EmptyStateCard
@@ -63,7 +64,8 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
             if (!hasAnyData) {
                 EmptyStateCard(
                     titleRes = R.string.trends_empty_title,
-                    subtitleRes = R.string.trends_empty_subtitle
+                    subtitleRes = R.string.trends_empty_subtitle,
+                    iconRes = R.drawable.ic_empty_moon
                 )
             } else {
                 TodayCard(todaySleeps, todayFeedings)
@@ -109,7 +111,7 @@ private fun TodayCard(
 ) {
     val scheme = LocalSWScheme.current
     GlassCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().floatingY(amplitude = 2.dp, durationMillis = 9000),
         cornerRadius = 22.dp,
         contentPadding = PaddingValues(SWSpacing.lg),
         elevation = ElevationLevel.MEDIUM
