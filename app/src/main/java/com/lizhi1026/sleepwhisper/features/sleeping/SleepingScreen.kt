@@ -8,12 +8,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -91,36 +93,43 @@ fun SleepingScreen(vm: SleepingViewModel = hiltViewModel()) {
     CompositionLocalProvider(LocalSWScheme provides SWScheme.DARK) {
         Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(SWScheme.DARK))) {
             Starfield(modifier = Modifier.fillMaxSize(), density = 80)
+            // Anchor the whole stack to the vertical center of the usable area. Earlier
+            // revisions used Spacer(weight 0.5f)/weight(1f) to position the WakeButton at
+            // roughly 1/3 from top — but when the player is Playing the layout adds a
+            // PlayerStatusCard (~64dp) + a 32dp spacer above the button, and on smaller
+            // heights (landscape, multi-window, large font scale) the weighted spacers
+            // collapse to 0 and the 180dp WakeButton was getting pushed off the bottom of
+            // the screen. The only visible remnant was the PulseRing's outward-expanding
+            // arcs (drawn up to 1.8x the canvas size, so they leak beyond the WakeButton
+            // box), producing the "wake button is gone, ripples at the bottom" symptom.
+            // CenterVertically keeps the WakeButton anchored near the screen center no
+            // matter how tall the content above grows; windowInsetsPadding ensures the
+            // edge-to-edge background still applies while keeping content out from under
+            // the status and navigation bars.
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.systemBars)
                     .padding(horizontal = SWSpacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(SWSpacing.xxl, Alignment.CenterVertically)
             ) {
-                Spacer(Modifier.weight(0.5f))
-
                 TitleSection(babyName = baby?.name ?: "")
-                Spacer(Modifier.height(SWSpacing.xxl))
 
                 CountdownSection(elapsedSec)
-                Spacer(Modifier.height(SWSpacing.xxl))
 
                 if (playerState is PlayerState.Playing) {
                     val ps = playerState as PlayerState.Playing
                     PlayerStatusCard(presetId = ps.presetId, endsAt = ps.endsAt, nowMs = nowMs)
-                    Spacer(Modifier.height(SWSpacing.xxl))
                 }
 
                 WakeButton(onWake = vm::onWake)
-
-                Spacer(Modifier.weight(1f))
 
                 if (playerState is PlayerState.Playing) {
                     PausePill(label = stringResource(R.string.sleeping_pause), onClick = vm::pausePlayer)
                 } else if (playerState is PlayerState.Paused) {
                     PausePill(label = stringResource(R.string.sleeping_resume), onClick = vm::resumePlayer)
                 }
-                Spacer(Modifier.height(SWSpacing.huge))
             }
         }
     }
