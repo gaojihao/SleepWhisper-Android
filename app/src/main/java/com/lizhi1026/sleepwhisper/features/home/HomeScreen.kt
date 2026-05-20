@@ -94,7 +94,17 @@ fun HomeScreen(
     val currentPreset by vm.currentPreset.observeAsState(null)
     val hasSeenHints by vm.hasSeenHints.observeAsState(false)
 
-    val hour = remember { java.time.LocalTime.now().hour }
+    // Poll hour-of-day so the LaunchedEffect below re-fires when the clock
+    // crosses an hour boundary (e.g. user keeps Home open across 19:00 and
+    // expects the evening ambient hint to kick in).
+    val hour by androidx.compose.runtime.produceState(
+        initialValue = java.time.LocalTime.now().hour
+    ) {
+        while (true) {
+            value = java.time.LocalTime.now().hour
+            kotlinx.coroutines.delay(60_000L)
+        }
+    }
 
     val heroBackdrop = LocalHeroBackdropController.current
     LaunchedEffect(hour) {
