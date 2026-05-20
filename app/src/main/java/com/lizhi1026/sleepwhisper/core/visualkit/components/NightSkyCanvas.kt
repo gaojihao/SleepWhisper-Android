@@ -35,6 +35,21 @@ private data class TwinkleStar(
 
 private const val STAR_COUNT = 80
 private const val STAR_SEED = 0xA110A4L
+
+private data class DriftingStar(
+    var nx: Float,           // current normalized x (mutable, drifts)
+    val ny: Float,            // fixed y
+    val baseSizeDp: Float,
+    var alpha: Float,         // current alpha (0..1, fades in on respawn)
+    val phase: Float,
+    val periodMs: Float,
+    val velocityDpPerSec: Float  // ~0.5 dp/sec
+)
+
+private const val DRIFTING_STAR_COUNT = 6
+private const val DRIFTING_STAR_SEED = 0xD81FA1L
+private const val DRIFTING_RESPAWN_FADE_MS = 800L
+
 // Canvas frame interval. 33ms ≈ 30fps. Higher than the master spec's "10fps for
 // twinkles" target because the same animation loop drives meteor and drifting-star
 // rendering in subsequent tasks, both of which need 30fps to look smooth. Stars
@@ -83,6 +98,23 @@ fun NightSkyCanvas(
         }
     }
 
+    val driftingStars = remember {
+        val r = Random(DRIFTING_STAR_SEED)
+        mutableListOf<DriftingStar>().apply {
+            repeat(DRIFTING_STAR_COUNT) {
+                add(DriftingStar(
+                    nx = r.nextFloat(),
+                    ny = r.nextFloat(),
+                    baseSizeDp = 0.8f + r.nextFloat() * 1.0f,
+                    alpha = 1f,
+                    phase = r.nextFloat() * (2f * PI.toFloat()),
+                    periodMs = 3000f + r.nextFloat() * 2000f,
+                    velocityDpPerSec = 0.5f
+                ))
+            }
+        }
+    }
+
     var twinkleClockMs by remember { mutableFloatStateOf(0f) }
     if (!LocalReduceMotion.current) {
         LaunchedEffect(Unit) {
@@ -92,6 +124,30 @@ fun NightSkyCanvas(
                     if (frameMs - lastTick >= FRAME_INTERVAL_MS) {
                         twinkleClockMs = frameMs.toFloat()
                         lastTick = frameMs
+                    }
+                }
+            }
+        }
+    }
+    if (!LocalReduceMotion.current) {
+        LaunchedEffect(Unit) {
+            var lastFrameMs = 0L
+            while (true) {
+                withInfiniteAnimationFrameMillis { frameMs ->
+                    if (lastFrameMs == 0L) {
+                        lastFrameMs = frameMs
+                        return@withInfiniteAnimationFrameMillis
+                    }
+                    val dt = (frameMs - lastFrameMs).coerceAtMost(100L)
+                    lastFrameMs = frameMs
+                    val dtSec = dt / 1000f
+                    driftingStars.forEachIndexed { i, ds ->
+                        ds.nx += ds.velocityDpPerSec / 360f * dtSec
+                        if (ds.nx > 1.05f) {
+                            driftingStars[i] = ds.copy(nx = -0.05f, ny = Random.nextFloat(), alpha = 0f)
+                        } else if (ds.alpha < 1f) {
+                            ds.alpha = (ds.alpha + dtSec * (1000f / DRIFTING_RESPAWN_FADE_MS)).coerceAtMost(1f)
+                        }
                     }
                 }
             }
@@ -126,6 +182,18 @@ fun NightSkyCanvas(
                 color = Color.White.copy(alpha = alpha),
                 radius = star.baseSizeDp.dp.toPx(),
                 center = Offset(star.nx * size.width, star.ny * size.height)
+            )
+        }
+        // Layer 3 — drifting stars (brighter, with twinkle)
+        driftingStars.forEach { ds ->
+            val alphaBase = if (reduce) 0.85f else {
+                val sinVal = sin(twinkleClockMs / ds.periodMs * twoPi + ds.phase)
+                0.5f + 0.5f * (sinVal * 0.5f + 0.5f)
+            }
+            drawCircle(
+                color = Color.White.copy(alpha = alphaBase * ds.alpha),
+                radius = ds.baseSizeDp.dp.toPx(),
+                center = Offset(ds.nx * size.width, ds.ny * size.height)
             )
         }
     }
