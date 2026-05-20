@@ -65,8 +65,13 @@ import com.lizhi1026.sleepwhisper.model.AudioPreset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
-fun SleepingScreen(vm: SleepingViewModel = hiltViewModel()) {
+fun SleepingScreen(
+    sharedScope: androidx.compose.animation.SharedTransitionScope,
+    animScope: androidx.compose.animation.AnimatedVisibilityScope,
+    vm: SleepingViewModel = hiltViewModel()
+) {
     val ongoing by vm.ongoingSleep.observeAsState(null)
     val playerState by vm.playerState.observeAsState(PlayerState.Idle)
     val baby by vm.baby.observeAsState(null)

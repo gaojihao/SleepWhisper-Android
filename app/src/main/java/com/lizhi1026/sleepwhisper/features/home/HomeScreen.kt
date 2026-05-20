@@ -63,8 +63,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
+@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeScreen(
+    sharedScope: androidx.compose.animation.SharedTransitionScope,
+    animScope: androidx.compose.animation.AnimatedVisibilityScope,
     onOpenPlayer: () -> Unit,
     vm: HomeViewModel = hiltViewModel()
 ) {

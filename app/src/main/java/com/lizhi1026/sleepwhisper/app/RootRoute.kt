@@ -1,9 +1,22 @@
 package com.lizhi1026.sleepwhisper.app
 
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalHeroBackdropController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -67,56 +80,92 @@ import kotlinx.coroutines.launch
  * navigation-bar inset. Sleeping is intentionally edge-to-edge with no padding because
  * it's a full-screen immersive screen.
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RootRoute(app: AppStateContainer) {
     val scheme by app.themeProvider.scheme.observeAsState(SWScheme.DAY)
     SWTheme(scheme) {
-        val rootKey by app.rootKey.observeAsState("onboarding")
-        val toast by app.toast.events.observeAsState(null)
-        val summary by app.lastSleepSummary.observeAsState(null)
-        val baby by app.baby.observeAsState(null)
-        val editTarget by app.pendingEditTarget.observeAsState(null)
-        val scope = rememberCoroutineScope()
+        CompositionLocalProvider(LocalHeroBackdropController provides app.heroBackdrop) {
+            val rootKey by app.rootKey.observeAsState("onboarding")
+            val toast by app.toast.events.observeAsState(null)
+            val summary by app.lastSleepSummary.observeAsState(null)
+            val baby by app.baby.observeAsState(null)
+            val editTarget by app.pendingEditTarget.observeAsState(null)
+            val scope = rememberCoroutineScope()
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Crossfade(targetState = rootKey, animationSpec = tween(SWMotion.screenInMs), label = "root") { key ->
-                when (key) {
-                    "onboarding" -> WithStatusBarPadding { OnboardingScreen() }
-                    "welcome"    -> WelcomeRitualScreen(app)              // edge-to-edge cinematic
-                    "sleeping"   -> SleepingScreen()                       // edge-to-edge immersive
-                    else         -> MainScaffold()
+            // Lifecycle observer — snap morphProgress to match rootKey on ON_RESUME
+            // so a backgrounded mid-morph doesn't resume to a half-animated state.
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        app.snapMorphToCurrent()
+                    }
                 }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
 
-            summary?.let { s ->
-                SleepSummaryOverlay(
-                    summary = s,
-                    babyName = baby?.name,
-                    onDismiss = app::clearSleepSummary
-                )
-            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                SharedTransitionLayout {
+                    AnimatedContent(
+                        targetState = rootKey,
+                        transitionSpec = {
+                            // Home ↔ Sleeping uses the hero morph timing; other transitions
+                            // keep the standard screen-in/out fade.
+                            val isHeroCrossing =
+                                (initialState == "sleeping") != (targetState == "sleeping")
+                            val durIn  = if (isHeroCrossing) SWMotion.heroMorphMs else SWMotion.screenInMs
+                            val durOut = if (isHeroCrossing) SWMotion.heroMorphMs else SWMotion.screenOutMs
+                            fadeIn(animationSpec = androidx.compose.animation.core.tween(durIn)) togetherWith
+                                fadeOut(animationSpec = androidx.compose.animation.core.tween(durOut))
+                        },
+                        label = "root"
+                    ) { key ->
+                        when (key) {
+                            "onboarding" -> WithStatusBarPadding { OnboardingScreen() }
+                            "welcome"    -> WelcomeRitualScreen(app)
+                            "sleeping"   -> SleepingScreen(
+                                sharedScope = this@SharedTransitionLayout,
+                                animScope = this@AnimatedContent
+                            )
+                            else         -> MainScaffold(
+                                sharedScope = this@SharedTransitionLayout,
+                                animScope = this@AnimatedContent
+                            )
+                        }
+                    }
+                }
 
-            editTarget?.let { t ->
-                EventEditSheet(
-                    target = t,
-                    onDismiss = app::clearPendingEdit,
-                    onSaveFeeding = { f -> scope.launch { app.updateFeeding(f) } },
-                    onSaveDiaper = { d -> scope.launch { app.updateDiaper(d) } }
-                )
-            }
+                summary?.let { s ->
+                    SleepSummaryOverlay(
+                        summary = s,
+                        babyName = baby?.name,
+                        onDismiss = app::clearSleepSummary
+                    )
+                }
 
-            // Toast sits above the system nav bar.
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
-            ) {
-                ToastOverlay(
-                    item = toast,
-                    onDismiss = app.toast::consume,
-                    onUndo = toast?.undo,
-                    onEditAction = toast?.editAction
-                )
+                editTarget?.let { t ->
+                    EventEditSheet(
+                        target = t,
+                        onDismiss = app::clearPendingEdit,
+                        onSaveFeeding = { f -> scope.launch { app.updateFeeding(f) } },
+                        onSaveDiaper = { d -> scope.launch { app.updateDiaper(d) } }
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                ) {
+                    ToastOverlay(
+                        item = toast,
+                        onDismiss = app.toast::consume,
+                        onUndo = toast?.undo,
+                        onEditAction = toast?.editAction
+                    )
+                }
             }
         }
     }
@@ -131,8 +180,12 @@ private fun WithStatusBarPadding(content: @Composable () -> Unit) {
     ) { content() }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun MainScaffold() {
+private fun MainScaffold(
+    sharedScope: SharedTransitionScope,
+    animScope: AnimatedVisibilityScope
+) {
     var tab by remember { mutableStateOf(0) }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     Column(modifier = Modifier.fillMaxSize()) {
@@ -142,7 +195,11 @@ private fun MainScaffold() {
                 .padding(top = statusBarTop)
         ) {
             when (tab) {
-                0 -> HomeScreen(onOpenPlayer = { tab = 3 })
+                0 -> HomeScreen(
+                    sharedScope = sharedScope,
+                    animScope = animScope,
+                    onOpenPlayer = { tab = 3 }
+                )
                 1 -> TrendsScreen()
                 2 -> SettingsScreen()
                 3 -> PlayerScreen()
