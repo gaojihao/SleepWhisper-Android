@@ -43,6 +43,7 @@ import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
 import com.lizhi1026.sleepwhisper.core.strings.greetingForHour
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalHeroBackdropController
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
@@ -53,6 +54,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
+import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.RollingNumber
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
@@ -79,6 +81,14 @@ fun HomeScreen(
     val hasSeenHints by vm.hasSeenHints.observeAsState(false)
 
     val hour = remember { java.time.LocalTime.now().hour }
+
+    val heroBackdrop = LocalHeroBackdropController.current
+    LaunchedEffect(hour) {
+        // Evening (19:00–05:59) — tint backdrop dusk-orange whisper. Otherwise clear.
+        heroBackdrop.setAmbient(
+            if (hour >= 19 || hour < 6) Color(0xFFFFB088) else null
+        )
+    }
 
     var showBottleSheet by remember { mutableStateOf(false) }
     var showSleepTypePicker by remember { mutableStateOf(false) }
@@ -151,27 +161,24 @@ private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
             ChronoUnit.DAYS.between(birth, today).toInt().coerceAtLeast(0)
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
         BasicText(
             text = stringResource(greetingForHour(hour)),
-            style = SWFont.serifItalic(17).copy(color = SWColor.textPrimary(scheme))
+            style = SWFont.serifItalic(22).copy(color = SWColor.textSecondary(scheme))
         )
-        if (babyName != null || daysOld != null) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                babyName?.let {
-                    BasicText(
-                        text = it,
-                        style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
-                    )
-                }
-                daysOld?.let {
-                    BasicText(
-                        text = stringResource(R.string.home_daycount, it),
-                        style = SWFont.bodyMD().copy(color = SWColor.textTertiary(scheme)),
-                        modifier = Modifier.padding(start = SWSpacing.xs, bottom = 4.dp)
-                    )
-                }
-            }
+        babyName?.let {
+            BasicText(
+                text = it,
+                style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
+            )
+        }
+        // Short hairline flourish — reads as a book-chapter rule, not a divider.
+        Hairline(modifier = Modifier.width(60.dp).padding(top = SWSpacing.xs))
+        daysOld?.let {
+            BasicText(
+                text = stringResource(R.string.home_daycount, it).uppercase(),
+                style = SWFont.labelMD().copy(color = SWColor.textTertiary(scheme))
+            )
         }
     }
 }
