@@ -52,9 +52,11 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
+import com.lizhi1026.sleepwhisper.core.visualkit.components.innerHighlight
 import com.lizhi1026.sleepwhisper.core.visualkit.floatingY
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
+import com.lizhi1026.sleepwhisper.core.visualkit.components.ChevronTrail
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
@@ -269,7 +271,8 @@ private fun NowPlayingCard(
                     .background(
                         if (scheme == SWScheme.DAY) SWColor.softLilac(scheme)
                         else SWColor.primary(scheme)
-                    ),
+                    )
+                    .innerHighlight(cornerRadius = 26.dp),
                 contentAlignment = Alignment.Center
             ) {
                 val iconRes = presetIconRes ?: R.drawable.ic_empty_moon
@@ -297,13 +300,8 @@ private fun NowPlayingCard(
                     )
                 }
             }
-            // Right chevron
-            androidx.compose.foundation.Image(
-                painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_chevron_right),
-                contentDescription = null,
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(SWColor.textSecondary(scheme)),
-                modifier = Modifier.size(20.dp)
-            )
+            // Right: ChevronTrail replaces the previous static chevron icon
+            ChevronTrail()
         }
     }
 }
