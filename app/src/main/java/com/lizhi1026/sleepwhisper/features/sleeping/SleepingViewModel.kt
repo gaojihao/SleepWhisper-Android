@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SleepingViewModel @Inject constructor(
-    private val app: AppStateContainer
+    val app: AppStateContainer
 ) : ViewModel() {
     val ongoingSleep: LiveData<SleepSession?> = app.ongoingSleep
     val playerState: LiveData<PlayerState> = app.audioPlayer.stateLive

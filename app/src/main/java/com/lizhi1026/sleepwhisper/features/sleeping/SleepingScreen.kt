@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableLongStateOf
@@ -61,6 +62,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.LiquidProgressRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.Starfield
+import com.lizhi1026.sleepwhisper.core.visualkit.components.sleepHeroDestination
 import com.lizhi1026.sleepwhisper.model.AudioPreset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,8 +98,27 @@ fun SleepingScreen(
     // designed against the dark palette (deep blue starfield, cool glows) — overriding it
     // with the NIGHT red-light scheme changes the visual identity completely.
     CompositionLocalProvider(LocalSWScheme provides SWScheme.DARK) {
+        val morphProgress by remember(vm.app.morphProgress) {
+            derivedStateOf { vm.app.morphProgress.value }
+        }
+        val morphScope = rememberCoroutineScope()
         Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(SWScheme.DARK))) {
-            Starfield(modifier = Modifier.fillMaxSize(), density = 80)
+            // Star density ramps with morph progress on entry. After the morph settles
+            // (morphProgress = 1), density stays at the full 80. Phase 2 replaces this
+            // with NightSkyCanvas.
+            val density = (morphProgress * 80f).toInt().coerceAtLeast(0).coerceAtMost(80)
+            Starfield(modifier = Modifier.fillMaxSize(), density = density)
+
+            // Invisible 600dp halo placeholder — anchors the shared element to its
+            // destination position so the Sleep CTA's morph has somewhere to fly to.
+            // Drawn first (under the timer column) so the timer text remains visible.
+            Box(
+                modifier = Modifier
+                    .size(600.dp)
+                    .align(Alignment.Center)
+                    .sleepHeroDestination(sharedScope, animScope)
+            )
+
             // Anchor the whole stack to the vertical center of the usable area. Earlier
             // revisions used Spacer(weight 0.5f)/weight(1f) to position the WakeButton at
             // roughly 1/3 from top — but when the player is Playing the layout adds a
@@ -128,7 +149,12 @@ fun SleepingScreen(
                     PlayerStatusCard(presetId = ps.presetId, endsAt = ps.endsAt, nowMs = nowMs)
                 }
 
-                WakeButton(onWake = vm::onWake)
+                WakeButton(
+                    onWake = {
+                        morphScope.launch { vm.app.endSleepMorph() }
+                        vm.onWake()
+                    }
+                )
 
                 if (playerState is PlayerState.Playing) {
                     PausePill(label = stringResource(R.string.sleeping_pause), onClick = vm::pausePlayer)
