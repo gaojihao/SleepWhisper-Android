@@ -1,5 +1,8 @@
 package com.lizhi1026.sleepwhisper.features.settings
 
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,9 +14,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
@@ -23,10 +28,12 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.strings.displayKey
@@ -45,9 +52,19 @@ import com.lizhi1026.sleepwhisper.model.UserSettings
 @Composable
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val scheme = LocalSWScheme.current
+    val context = LocalContext.current
     val baby by vm.baby.observeAsState(null)
     val s by vm.settings.observeAsState(UserSettings.DEFAULT)
     val forceNightPreview by vm.forceNightPreview.observeAsState(false)
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            vm.update { it.copy(cryDetectionEnabled = true) }
+        }
+        // If denied, the toggle stays off; user can retry from the system Settings or by toggling again.
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         BreathingBackground()
@@ -115,8 +132,21 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     on = s.cryDetectionEnabled,
                     onToggle = {
                         val nowEnabled = !s.cryDetectionEnabled
-                        vm.update { it.copy(cryDetectionEnabled = nowEnabled) }
-                        if (!nowEnabled) vm.stopCryDetection()
+                        if (nowEnabled) {
+                            val granted = ContextCompat.checkSelfPermission(
+                                context, android.Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (granted) {
+                                vm.update { it.copy(cryDetectionEnabled = true) }
+                            } else {
+                                // Defer enabling until the user grants the runtime permission;
+                                // the launcher callback writes back the toggled value on success.
+                                micPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                            }
+                        } else {
+                            vm.update { it.copy(cryDetectionEnabled = false) }
+                            vm.stopCryDetection()
+                        }
                     }
                 )
                 if (s.cryDetectionEnabled) {
@@ -234,7 +264,14 @@ private fun LabelRow(label: String, value: String) {
 private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit) {
     val scheme = LocalSWScheme.current
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .toggleable(
+                value = on,
+                role = androidx.compose.ui.semantics.Role.Switch,
+                onValueChange = { onToggle() }
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

@@ -1,15 +1,22 @@
 package com.lizhi1026.sleepwhisper.core.persistence.entity
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "feeding_event",
-    indices = [
-        Index("babyId"),
-        Index("startedAt")
-    ]
+    foreignKeys = [
+        ForeignKey(
+            entity = BabyEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["babyId"],
+            onDelete = ForeignKey.CASCADE,
+            onUpdate = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("babyId", "startedAt")]
 )
 data class FeedingEventEntity(
     @PrimaryKey val id: String,

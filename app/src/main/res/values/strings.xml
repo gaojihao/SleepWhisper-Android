@@ -141,8 +141,6 @@
     <string name="settings_age_display_yearsmonthsdays">%1$dy %2$dm %3$dd</string>
     <string name="settings_age_display_monthsdays">%1$dm %2$dd</string>
     <string name="settings_age_display_days">%1$d d</string>
-    <string name="settings_icloud">iCloud sync</string>
-    <string name="settings_icloud_note">All data stays on your device and your private iCloud only.</string>
     <string name="settings_nightmode_label">Red night mode hours</string>
     <string name="settings_nightmode_preview">Preview red night mode</string>
     <string name="settings_section_about">About</string>
@@ -186,6 +184,7 @@
     <string name="toast_cryheard">Heard a cry · sound resumed</string>
     <string name="toast_edittime">Edit time</string>
     <string name="toast_exact_alarm_needed">Grant \"Alarms &amp; reminders\" in system Settings for precise notifications.</string>
+    <string name="toast_mic_perm_needed">Grant microphone access in system Settings to enable cry detection.</string>
     <string name="toast_logged">Logged %1$s</string>
     <string name="toast_loggedml">Logged %1$s %2$dml</string>
     <string name="toast_pdffailed">PDF export failed</string>

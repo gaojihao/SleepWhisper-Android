@@ -59,19 +59,21 @@ object SWColor {
     fun textPrimary(s: SWScheme): Color = when (s) {
         SWScheme.DAY   -> Color(0.055f, 0.067f, 0.086f)
         SWScheme.DARK  -> Color(0.96f, 0.96f, 0.94f)
-        SWScheme.NIGHT -> Color(0.79f, 0.56f, 0.56f)
+        // NIGHT — tuned to ≥ 4.5:1 against surface=(0.04,0.02,0.02). Previous
+        // (0.79,0.56,0.56) was ~3.1:1 and effectively unreadable at 3 a.m.
+        SWScheme.NIGHT -> Color(1.00f, 0.75f, 0.75f)
     }
 
     fun textSecondary(s: SWScheme): Color = when (s) {
         SWScheme.DAY   -> Color(0.373f, 0.392f, 0.439f)
         SWScheme.DARK  -> Color(0.74f, 0.75f, 0.78f)
-        SWScheme.NIGHT -> Color(0.60f, 0.40f, 0.40f)
+        SWScheme.NIGHT -> Color(0.85f, 0.55f, 0.55f)
     }
 
     fun textTertiary(s: SWScheme): Color = when (s) {
         SWScheme.DAY   -> Color(0.612f, 0.639f, 0.686f)
         SWScheme.DARK  -> Color(0.56f, 0.57f, 0.60f)
-        SWScheme.NIGHT -> Color(0.45f, 0.28f, 0.28f)
+        SWScheme.NIGHT -> Color(0.70f, 0.42f, 0.42f)
     }
 
     fun textInverse(s: SWScheme): Color = when (s) {

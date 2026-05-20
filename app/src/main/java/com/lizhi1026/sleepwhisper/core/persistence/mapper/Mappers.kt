@@ -1,5 +1,6 @@
 package com.lizhi1026.sleepwhisper.core.persistence.mapper
 
+import android.util.Log
 import com.lizhi1026.sleepwhisper.model.Baby
 import com.lizhi1026.sleepwhisper.model.DiaperEvent
 import com.lizhi1026.sleepwhisper.model.FeedingEvent
@@ -14,8 +15,20 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
+private const val TAG = "sw.mapper"
 private val json = Json { ignoreUnknownKeys = true }
 private val stringListSerializer = ListSerializer(String.serializer())
+
+private inline fun <reified T : Enum<T>> Array<T>.findBySerializedOr(
+    value: String,
+    selector: (T) -> String,
+    fallback: T
+): T {
+    val match = firstOrNull { selector(it) == value }
+    if (match != null) return match
+    Log.e(TAG, "unknown ${T::class.simpleName} serialized=\"$value\", falling back to $fallback")
+    return fallback
+}
 
 // Baby
 
@@ -32,7 +45,8 @@ fun Baby.toEntity(): BabyEntity = BabyEntity(
 fun BabyEntity.toDomain(): Baby = Baby(
     id = id,
     name = name,
-    gender = Baby.BabyGender.entries.first { it.serializedName == gender },
+    gender = Baby.BabyGender.entries.toTypedArray()
+        .findBySerializedOr(gender, { it.serializedName }, Baby.BabyGender.UNKNOWN),
     dateOfBirth = dateOfBirth,
     avatarLocalPath = avatarLocalPath,
     createdAt = createdAt,
@@ -58,10 +72,12 @@ fun SleepSession.toEntity(): SleepSessionEntity = SleepSessionEntity(
 fun SleepSessionEntity.toDomain(): SleepSession = SleepSession(
     id = id,
     babyId = babyId,
-    type = SleepSession.SleepType.entries.first { it.serializedName == type },
+    type = SleepSession.SleepType.entries.toTypedArray()
+        .findBySerializedOr(type, { it.serializedName }, SleepSession.SleepType.NAP),
     startAt = startAt,
     endAt = endAt,
-    quality = SleepSession.SleepQuality.entries.first { it.serializedName == quality },
+    quality = SleepSession.SleepQuality.entries.toTypedArray()
+        .findBySerializedOr(quality, { it.serializedName }, SleepSession.SleepQuality.UNKNOWN),
     fallAsleepMinutes = fallAsleepMinutes,
     wakeCount = wakeCount,
     audioPresetId = audioPresetId,
@@ -84,7 +100,8 @@ fun FeedingEvent.toEntity(): FeedingEventEntity = FeedingEventEntity(
 fun FeedingEventEntity.toDomain(): FeedingEvent = FeedingEvent(
     id = id,
     babyId = babyId,
-    method = FeedingEvent.FeedingMethod.entries.first { it.serializedName == method },
+    method = FeedingEvent.FeedingMethod.entries.toTypedArray()
+        .findBySerializedOr(method, { it.serializedName }, FeedingEvent.FeedingMethod.BOTTLE),
     amountMl = amountMl,
     durationSeconds = durationSeconds,
     startedAt = startedAt,
@@ -103,7 +120,8 @@ fun DiaperEvent.toEntity(): DiaperEventEntity = DiaperEventEntity(
 fun DiaperEventEntity.toDomain(): DiaperEvent = DiaperEvent(
     id = id,
     babyId = babyId,
-    type = DiaperEvent.DiaperType.entries.first { it.serializedName == type },
+    type = DiaperEvent.DiaperType.entries.toTypedArray()
+        .findBySerializedOr(type, { it.serializedName }, DiaperEvent.DiaperType.WET),
     occurredAt = occurredAt
 )
 
@@ -132,7 +150,12 @@ fun SleepRecommendationEntity.toDomain(): SleepRecommendation = SleepRecommendat
     wakeWindowMinutes = wakeWindowMinutes,
     confidence = confidence,
     reasoningKeys = if (reasoningKeysJson.isBlank()) emptyList()
-    else json.decodeFromString(stringListSerializer, reasoningKeysJson),
-    outcome = SleepRecommendation.RecommendationOutcome.entries
-        .first { it.serializedName == outcome }
+    else try {
+        json.decodeFromString(stringListSerializer, reasoningKeysJson)
+    } catch (t: Throwable) {
+        Log.e(TAG, "bad reasoningKeysJson=\"$reasoningKeysJson\"", t)
+        emptyList()
+    },
+    outcome = SleepRecommendation.RecommendationOutcome.entries.toTypedArray()
+        .findBySerializedOr(outcome, { it.serializedName }, SleepRecommendation.RecommendationOutcome.PENDING)
 )

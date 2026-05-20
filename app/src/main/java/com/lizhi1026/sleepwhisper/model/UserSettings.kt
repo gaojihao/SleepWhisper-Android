@@ -1,5 +1,6 @@
 package com.lizhi1026.sleepwhisper.model
 
+import com.lizhi1026.sleepwhisper.BuildConfig
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,7 +15,7 @@ data class UserSettings(
     val nightModeStartHour: Int = 22,
     val nightModeEndHour: Int = 6,
     val locale: String = java.util.Locale.getDefault().toLanguageTag(),
-    val lastSeenVersion: String = "1.0.0",
+    val lastSeenVersion: String = BuildConfig.VERSION_NAME,
     val wakeLongPressEnabled: Boolean = true
     // iOS 有 iCloudSyncEnabled，Android 不做同步， intentionally omitted
 ) {

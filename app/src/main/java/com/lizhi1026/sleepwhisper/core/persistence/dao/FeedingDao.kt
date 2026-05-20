@@ -10,7 +10,7 @@ import com.lizhi1026.sleepwhisper.core.persistence.entity.FeedingEventEntity
 
 @Dao
 interface FeedingDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: FeedingEventEntity)
 
     @Update

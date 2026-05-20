@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
@@ -33,6 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
@@ -184,7 +188,16 @@ private fun androidx.compose.foundation.layout.RowScope.TabItem(
         modifier = Modifier
             .weight(1f)
             .fillMaxSize()
-            .clickable(onClick = onClick),
+            .heightIn(min = 48.dp)
+            .clickable(
+                onClickLabel = label,
+                role = androidx.compose.ui.semantics.Role.Tab,
+                onClick = onClick
+            )
+            .semantics {
+                this.selected = selected
+                this.contentDescription = label
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -193,6 +206,8 @@ private fun androidx.compose.foundation.layout.RowScope.TabItem(
         ) {
             Image(
                 painter = painterResource(id = iconRes),
+                // contentDescription on the parent Box already announces the tab name;
+                // marking the icon as decorative avoids TalkBack reading it twice.
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(color),
                 modifier = Modifier

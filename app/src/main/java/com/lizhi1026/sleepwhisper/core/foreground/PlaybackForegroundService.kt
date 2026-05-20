@@ -65,23 +65,18 @@ class PlaybackForegroundService : LifecycleService() {
         }
     }
 
-    private var stopSelfWhenIdle = false
+    private val audioObserver = Observer<com.lizhi1026.sleepwhisper.core.audio.PlayerState> {
+        considerStoppingIfIdle()
+    }
+    private val cryObserver = Observer<com.lizhi1026.sleepwhisper.core.cry.CryDetectionState> {
+        considerStoppingIfIdle()
+    }
 
     override fun onCreate() {
         super.onCreate()
 
-        val audioObserver = Observer<com.lizhi1026.sleepwhisper.core.audio.PlayerState> { s ->
-            considerStoppingIfIdle()
-        }
-        val cryObserver = Observer<com.lizhi1026.sleepwhisper.core.cry.CryDetectionState> { s ->
-            considerStoppingIfIdle()
-        }
-
         audioPlayer.stateLive.observeForever(audioObserver)
         cryDetection.stateLive.observeForever(cryObserver)
-
-        // LiveData.removeObserver requires a reference; keep it for cleanup purposes.
-        stopSelfWhenIdle = true
 
         // Bring this Service to foreground immediately.
         startForeground(NOTIF_ID, buildNotification())
@@ -91,7 +86,6 @@ class PlaybackForegroundService : LifecycleService() {
         val a = audioPlayer.stateLive.value
         val c = cryDetection.stateLive.value
         if (isIdlePair(a, c)) {
-            stopSelfWhenIdle = true
             // Remove foreground state — notification drops with STOP_FOREGROUND_REMOVE.
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -116,16 +110,11 @@ class PlaybackForegroundService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        super.onStartCommand(intent, flags, startId)
         // Alongside onStartCommand, the service comes up ready to handle audio/cry sub-commands
         // through the same foreground lifecycle. Re-raise the foreground notification so it is
         // guaranteed to be on screen before we touch internal audio/cry state.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            startForeground(NOTIF_ID, buildNotification())
-        } else {
-            @Suppress("DEPRECATION")
-            startForeground(NOTIF_ID, buildNotification())
-        }
-        @Suppress("DEPRECATION")  // Built-in intent actions; held in companion for clarity
+        startForeground(NOTIF_ID, buildNotification())
 
         val action = intent?.action
         when (action) {
@@ -152,11 +141,12 @@ class PlaybackForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        audioPlayer.stateLive.removeObserver { /* previously registered via observeForever */ }
-        cryDetection.stateLive.removeObserver { /* idem */ }
+        audioPlayer.stateLive.removeObserver(audioObserver)
+        cryDetection.stateLive.removeObserver(cryObserver)
         super.onDestroy()
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun buildNotification(): android.app.Notification {
         val tapIntent = android.content.Intent(this, MainActivity::class.java).apply {
             flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
@@ -169,12 +159,21 @@ class PlaybackForegroundService : LifecycleService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, com.lizhi1026.sleepwhisper.core.notifications.NotificationChannels.CH_PLAYBACK)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        val builder = NotificationCompat.Builder(this, com.lizhi1026.sleepwhisper.core.notifications.NotificationChannels.CH_PLAYBACK)
+            .setSmallIcon(R.drawable.ic_stat_notification)
             .setContentTitle(getString(R.string.fg_notification_title))
             .setContentText(getString(R.string.fg_notification_text))
             .setOngoing(true)
             .setContentIntent(tapPending)
-            .build()
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+
+        // Attach MediaStyle so the notification participates in the system media center
+        // (lock screen, quick-settings media panel, Android Auto, Wear OS).
+        audioPlayer.mediaSession?.let { session ->
+            builder.setStyle(
+                androidx.media3.session.MediaStyleNotificationHelper.MediaStyle(session)
+            )
+        }
+        return builder.build()
     }
 }

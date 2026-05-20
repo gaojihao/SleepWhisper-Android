@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
-import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
@@ -55,8 +54,10 @@ fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
     val scheme = LocalSWScheme.current
     val baby by vm.baby.observeAsState(null)
     val settings by vm.settings.observeAsState(null)
-    val playerState by vm.playerState.observeAsState(PlayerState.Idle)
-    val currentId = (playerState as? PlayerState.Playing)?.presetId
+    val current by vm.currentPreset.observeAsState(null)
+    // Use currentPreset as the source of truth for "what's selected" — survives state
+    // transitions (Loading / FadingOut / Paused) that a `PlayerState.Playing` cast would miss.
+    val currentId = current?.id
 
     val minutesNow = settings?.defaultTimerMinutes ?: 30
     val ageMonths = remember(baby) { baby?.ageInMonths() ?: 0 }
@@ -269,7 +270,7 @@ private fun PresetRow(preset: AudioPreset, isPlaying: Boolean, onTap: () -> Unit
 }
 
 private fun onTap(preset: AudioPreset, minutes: Int, vm: PlayerViewModel) {
-    if ((vm.playerState.value as? PlayerState.Playing)?.presetId == preset.id) {
+    if (vm.currentPreset.value?.id == preset.id) {
         vm.stop()
     } else {
         vm.playPreset(preset.id, minutes)

@@ -4,11 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.PowerManager
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.asLiveData
 import com.lizhi1026.sleepwhisper.core.cry.CryDetectionState
@@ -17,12 +19,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.log10
@@ -44,7 +43,6 @@ class CryDetectionService @Inject constructor(
     private var recorder: AudioRecord? = null
     private var sampleJob: Job? = null
     private var aboveThresholdSince: Long? = null
-    private var sessionRequested = false
 
     private val thresholdDb: Int
         get() {
@@ -61,6 +59,12 @@ class CryDetectionService @Inject constructor(
         private const val LOOKBACK_THRESHOLD_DB = 60
         private const val REQUIRED_ABOVE_MS = 3_000
         private const val COOLDOWN_MS = 10_000L
+
+        /** Public so callers can pre-flight before invoking [start] and surface a UI prompt. */
+        fun hasMicrophonePermission(context: Context): Boolean =
+            ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     // -------------------------------------------------------------------------
@@ -71,34 +75,45 @@ class CryDetectionService @Inject constructor(
         // Guard: already running
         if (_state.value != CryDetectionState.Disabled) return
 
+        // Inline check so Android Lint can flow-analyze the permission guard ahead of the
+        // AudioRecord constructor inside setupRecorder().
+        val micGranted = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!micGranted) {
+            // No permission — caller is expected to have surfaced a toast / settings prompt
+            // before invoking start(). We do not attempt a runtime request from a Service
+            // context. Stay Disabled so subsequent calls can re-arm after the user grants.
+            return
+        }
+
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         if (pm.isPowerSaveMode) {
             // Low-power mode active — silently refuse to start (iOS parity).
             return
         }
 
-        scope.launch {
-            val granted = requestMicrophonePermission()
-            if (!granted) {
-                // Permission denied — stay disabled; do not repeatedly prompt.
-                return@launch
-            }
-
+        try {
             setupRecorder()
-            _state.value = CryDetectionState.Listening
-            sampleJob = scope.launch { sampleLoop() }
+        } catch (t: Throwable) {
+            // SecurityException, IllegalStateException, etc. Stay Disabled.
+            recorder?.runCatching { release() }
+            recorder = null
+            return
+        }
+        _state.value = CryDetectionState.Listening
+        sampleJob = scope.launch { sampleLoop() }
 
-            // Low-power broadcast receiver stays registered only while active.
-            powerSaveReceiver = object : BroadcastReceiver() {
-                override fun onReceive(ctx: Context, intent: Intent) {
-                    val en = pm.isPowerSaveMode
-                    if (en) stop()
-                }
-            }.also { r ->
-                context.registerReceiver(
-                    r,
-                    IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
-                )
+        powerSaveReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+                if (pm.isPowerSaveMode) stop()
+            }
+        }.also { r ->
+            val filter = IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(r, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(r, filter)
             }
         }
     }
@@ -106,8 +121,8 @@ class CryDetectionService @Inject constructor(
     fun stop() {
         sampleJob?.cancel()
         sampleJob = null
-        recorder?.stop()
-        recorder?.release()
+        recorder?.runCatching { stop() }
+        recorder?.runCatching { release() }
         recorder = null
         aboveThresholdSince = null
 
@@ -123,28 +138,7 @@ class CryDetectionService @Inject constructor(
     // Internal
     // -------------------------------------------------------------------------
 
-    private suspend fun requestMicrophonePermission(): Boolean =
-        suspendCancellableCoroutine { cont ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                android.Manifest.permission.RECORD_AUDIO
-            } else {
-                cont.resume(true)
-                return@suspendCancellableCoroutine
-            }
-            // Runtime permission check: if already granted, short-circuit.
-            val pm = context.getSystemService(Context.POWER_SERVICE) as android.app.ActivityManager
-            // Reuse Application context check via PackageManager
-            @Suppress("DEPRECATION")
-            val has = context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
-            if (has) { cont.resume(true); return@suspendCancellableCoroutine }
-
-            // Permission is not yet granted — request it from an activity context would be
-            // required. Since this is started from a Service/Foreground flow, we record the
-            // denied state and stop.
-            cont.resume(false)
-        }
-
+    @androidx.annotation.RequiresPermission(android.Manifest.permission.RECORD_AUDIO)
     private fun setupRecorder() {
         val bufSize = max(
             AudioRecord.getMinBufferSize(SAMPLE_RATE_HZ, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT),
@@ -157,17 +151,22 @@ class CryDetectionService @Inject constructor(
             AudioFormat.ENCODING_PCM_16BIT,
             bufSize
         )
-        rec.startRecording()
         recorder = rec
+        rec.startRecording()
     }
 
     private suspend fun sampleLoop() {
         val buf = ShortArray(SAMPLE_RATE_HZ / 2) // 0.5 s worth
         while (scope.isActive) {
-            delay(500)
-            val rec = recorder ?: continue
+            val rec = recorder ?: break
+            // AudioRecord.read is blocking — by reading first we never drop the leading 500 ms
+            // of audio. The loop's natural pacing is the read duration (~500 ms at 16 kHz mono).
             val read = rec.read(buf, 0, buf.size).coerceAtLeast(0)
-            if (read <= 0) continue
+            if (read <= 0) {
+                // Read failed or zero samples — back off briefly to avoid a busy loop.
+                delay(100)
+                continue
+            }
 
             val samples = buf.take(read)
             val rms = sqrt(samples.map { it.toDouble() * it }.average())
@@ -201,20 +200,18 @@ class CryDetectionService @Inject constructor(
     }
 
     private fun trigger() {
-        _state.value = CryDetectionState.Triggered
+        _state.value = CryDetectionState.Cooldown(
+            untilMs = System.currentTimeMillis() + COOLDOWN_MS
+        )
         onCryDetected?.invoke()
 
         scope.launch {
             delay(COOLDOWN_MS)
-            // Only re-arm if still in cooldown (not transitioned by user stop/start in meantime).
             val s = _state.value
             if (s is CryDetectionState.Cooldown) {
                 _state.value = CryDetectionState.Listening
                 aboveThresholdSince = null
             }
         }
-        _state.value = CryDetectionState.Cooldown(
-            untilMs = System.currentTimeMillis() + COOLDOWN_MS
-        )
     }
 }

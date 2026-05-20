@@ -21,8 +21,8 @@ import com.lizhi1026.sleepwhisper.core.persistence.entity.SleepSessionEntity
         DiaperEventEntity::class,
         SleepRecommendationEntity::class
     ],
-    version = 1,
-    exportSchema = false
+    version = 2,
+    exportSchema = true
 )
 abstract class SleepWhisperDatabase : RoomDatabase() {
     abstract fun babyDao(): BabyDao

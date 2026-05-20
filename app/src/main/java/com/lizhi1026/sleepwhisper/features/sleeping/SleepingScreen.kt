@@ -38,6 +38,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
@@ -67,15 +70,28 @@ fun SleepingScreen(vm: SleepingViewModel = hiltViewModel()) {
     val baby by vm.baby.observeAsState(null)
 
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) { nowMs = System.currentTimeMillis(); delay(1000) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // Tick only while the screen is at least STARTED — when the user navigates away or
+    // the system backgrounds the app, the coroutine is cancelled and the per-second
+    // recomposition stops. repeatOnLifecycle re-launches it when we resume.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                nowMs = System.currentTimeMillis()
+                delay(1000)
+            }
+        }
     }
 
     val elapsedSec = ongoing?.let { (nowMs - it.startAt) / 1000 } ?: 0L
 
-    // Force DARK scheme regardless of system.
-    CompositionLocalProvider(LocalSWScheme provides SWScheme.DARK) {
-        Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(SWScheme.DARK))) {
+    // If the user is in NIGHT mode, honor the red-light scheme so a 3 a.m. wake-up isn't
+    // blasted with the standard dark theme. Other schemes collapse to DARK because the
+    // sleeping screen is designed as an immersive dark surface.
+    val parentScheme = LocalSWScheme.current
+    val sleepScheme = if (parentScheme == SWScheme.NIGHT) SWScheme.NIGHT else SWScheme.DARK
+    CompositionLocalProvider(LocalSWScheme provides sleepScheme) {
+        Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(sleepScheme))) {
             Starfield(modifier = Modifier.fillMaxSize(), density = 80)
             Column(
                 modifier = Modifier

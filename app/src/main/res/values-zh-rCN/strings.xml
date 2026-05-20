@@ -141,8 +141,6 @@
     <string name="settings_age_display_yearsmonthsdays">%1$d岁%2$d月%3$d天</string>
     <string name="settings_age_display_monthsdays">%1$d月%2$d天</string>
     <string name="settings_age_display_days">%1$d天</string>
-    <string name="settings_icloud">iCloud 同步</string>
-    <string name="settings_icloud_note">所有数据本地存储，仅同步到你的私人 iCloud。</string>
     <string name="settings_nightmode_label">夜间红光时段</string>
     <string name="settings_nightmode_preview">预览红光夜间模式</string>
     <string name="settings_section_about">关于</string>
@@ -186,6 +184,7 @@
     <string name="toast_cryheard">听到了哭声 · 已恢复白噪音</string>
     <string name="toast_edittime">改时间</string>
     <string name="toast_exact_alarm_needed">请在系统设置中授予\"闹钟和提醒\"权限以获得准时通知。</string>
+    <string name="toast_mic_perm_needed">请在系统设置中授予麦克风权限以开启哭声检测。</string>
     <string name="toast_logged">已记 %1$s</string>
     <string name="toast_loggedml">已记 %1$s %2$dml</string>
     <string name="toast_pdffailed">PDF 导出失败</string>

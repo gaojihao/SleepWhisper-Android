@@ -10,10 +10,11 @@ import android.os.Handler
 import android.os.Looper
 import androidx.annotation.OptIn as OptInAnn
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.asLiveData
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -24,8 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -49,19 +49,29 @@ class AudioPlayerService @Inject constructor(
     val timerEndsAtLive: LiveData<Long?> = _timerEndsAt.asLiveData()
 
     private var player: ExoPlayer? = null
-    private var mediaSession: MediaSession? = null
+    private var mediaSessionInternal: MediaSession? = null
+
+    /** Exposed to PlaybackForegroundService so the foreground notification can attach a MediaStyle. */
+    val mediaSession: MediaSession? get() = mediaSessionInternal
+
     private var fadeJob: Job? = null
     private var timerJob: Job? = null
-    private var savedVolumeOnFadeStart: Float = 1f
-    private var aboveThresholdSince: Long? = null
+
+    // Focus state: distinguish transient-pause vs duck so we restore correctly on GAIN.
     private var audioFocusLossTransient = false
+    private var preDuckVolume: Float? = null
     private var sessionRequested = false
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     private val audioManager: AudioManager =
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     private val focusListener = OnAudioFocusChangeListener { change ->
         when (change) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                // Permanent loss (e.g. another media app gained focus). Tear down.
+                stop(reason = "focus_loss", fadeOverMs = 200)
+            }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 val current = _state.value
                 if (current is PlayerState.Playing) {
@@ -70,25 +80,44 @@ class AudioPlayerService @Inject constructor(
                     audioFocusLossTransient = true
                 }
             }
-            AudioManager.AUDIOFOCUS_GAIN -> {
-                if (audioFocusLossTransient) {
-                    audioFocusLossTransient = false
-                    val s = _state.value
-                    if (s is PlayerState.Interrupted && s.restoreTo != null) {
-                        play(s.restoreTo, null)
-                    }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // Default contract: app ducks itself.
+                if (preDuckVolume == null) {
+                    preDuckVolume = player?.volume ?: 1f
+                    player?.volume = DUCK_VOLUME
                 }
             }
-            else -> { /* other focus changes — no-op */ }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                // Un-duck first.
+                preDuckVolume?.let { saved ->
+                    player?.volume = saved
+                    preDuckVolume = null
+                }
+                if (audioFocusLossTransient) {
+                    audioFocusLossTransient = false
+                    // Resume using the current preset, not the snapshot — user may have switched
+                    // while we were interrupted.
+                    val resumeId = _currentPreset.value?.id
+                        ?: (_state.value as? PlayerState.Interrupted)?.restoreTo
+                    if (resumeId != null) play(resumeId, null)
+                }
+            }
+        }
+    }
+
+    private val playerListener = object : Player.Listener {
+        override fun onPlayerError(error: PlaybackException) {
+            _state.value = PlayerState.Error(error.message ?: "audio.error.playFailed")
+            // Tear down so isIdlePair() lets the foreground service exit; UI can re-arm via play().
+            scope.launch { stop(reason = "player_error", fadeOverMs = 0) }
         }
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    init {
-        // Audio focus is requested per-playback via AudioFocusRequest (API 26+); listener is bound
-        // to the request, not pre-attached at construction time.
+    companion object {
+        private const val DUCK_VOLUME = 0.2f
     }
 
     // -------------------------------------------------------------------------
@@ -125,16 +154,24 @@ class AudioPlayerService @Inject constructor(
             )
             .build()
 
-        val exo = (player ?: ExoPlayer.Builder(context).build().also { player = it }).apply {
-            repeatMode = Player.REPEAT_MODE_ONE
-            volume = 0f
-            setMediaItem(item)
-            prepare()
-            play()
-        }
+        val exo = player ?: ExoPlayer.Builder(context)
+            // Auto-pause on headphone unplug / Bluetooth disconnect.
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+            .apply {
+                // Keep CPU awake during playback so the timer/auto-stop fires on schedule.
+                setWakeMode(C.WAKE_MODE_LOCAL)
+                addListener(playerListener)
+            }
+            .also { player = it }
+        exo.repeatMode = Player.REPEAT_MODE_ONE
+        exo.volume = 0f
+        exo.setMediaItem(item)
+        exo.prepare()
+        exo.play()
 
-        if (mediaSession == null) {
-            mediaSession = MediaSession.Builder(context, exo).build()
+        if (mediaSessionInternal == null) {
+            mediaSessionInternal = MediaSession.Builder(context, exo).build()
         }
         _currentPreset.value = preset
 
@@ -183,25 +220,29 @@ class AudioPlayerService @Inject constructor(
 
         if (player == null) {
             _timerEndsAt.value = null
-            _state.value = PlayerState.Stopped
+            // Don't overwrite an Error state with Stopped — UI loses the surface.
+            if (_state.value !is PlayerState.Error) _state.value = PlayerState.Stopped
             releaseSessionIfNeeded()
             return
         }
 
-        if (pid != null) _state.value = PlayerState.FadingOut(pid)
+        if (pid != null && _state.value !is PlayerState.Error) {
+            _state.value = PlayerState.FadingOut(pid)
+        }
         cancelTimer()
 
         fadeTo(
             target = 0f,
             durationMs = fadeOverMs,
             onComplete = {
+                player?.removeListener(playerListener)
                 player?.stop()
                 player?.release()
                 player = null
-                mediaSession?.release()
-                mediaSession = null
+                mediaSessionInternal?.release()
+                mediaSessionInternal = null
                 _timerEndsAt.value = null
-                _state.value = PlayerState.Stopped
+                if (_state.value !is PlayerState.Error) _state.value = PlayerState.Stopped
                 releaseSessionIfNeeded()
             }
         )
@@ -214,9 +255,16 @@ class AudioPlayerService @Inject constructor(
 
     /** Called externally (e.g. CryDetectionService) when a cry is detected. */
     fun boostVolumeOnCry() {
-        when (val s = _state.value) {
+        when (_state.value) {
             is PlayerState.Playing -> {
                 player?.volume = 1f
+            }
+            is PlayerState.FadingOut -> {
+                // Cancel the fade-out, restore to full volume, transition back to Playing.
+                fadeJob?.cancel()
+                player?.volume = 1f
+                val preset = _currentPreset.value ?: return
+                _state.value = PlayerState.Playing(preset.id, _timerEndsAt.value)
             }
             else -> {
                 val id = _currentPreset.value?.id ?: return
@@ -245,32 +293,41 @@ class AudioPlayerService @Inject constructor(
     }
 
     private fun releaseSessionIfNeeded() {
-        // Placeholder for AudioSessionCoordinator parity when that abstraction is added.
         if (!sessionRequested) return
+        abandonAudioFocusIfNeeded()
         sessionRequested = false
     }
 
+    private fun abandonAudioFocusIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+            audioFocusRequest = null
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(focusListener)
+        }
+        audioFocusLossTransient = false
+        preDuckVolume = null
+    }
+
     /**
-     * Smooth volume ramp via 20 Hz steps on the main thread.
-     *
-     * @param target      final volume in [0, 1]
-     * @param durationMs  total ramp duration
-     * @param onComplete  run on the main thread after the last step
+     * Smooth volume ramp via 20 Hz steps on the main thread. Serializes against any in-flight
+     * fade by cancel-and-join — prevents the previous fade's onComplete from racing with a new
+     * play()/stop() and operating on the wrong player instance.
      */
     private fun fadeTo(target: Float, durationMs: Long, onComplete: (() -> Unit)? = null) {
-        fadeJob?.cancel()
-        savedVolumeOnFadeStart = player?.volume ?: 1f
-
+        val prev = fadeJob
         fadeJob = scope.launch {
+            prev?.cancelAndJoin()
+            val from = player?.volume ?: 1f
             val steps = max(1, (durationMs / 50).toInt())
-            val from = savedVolumeOnFadeStart
             for (i in 1..steps) {
                 delay(50)
+                if (!isActive) return@launch
                 val v = from + (target - from) * i / steps
                 player?.volume = v
-                if (!currentCoroutineContext().isActive) return@launch
             }
-            onComplete?.invoke()
+            if (isActive) onComplete?.invoke()
         }
     }
 
@@ -285,6 +342,7 @@ class AudioPlayerService @Inject constructor(
                 .setAudioAttributes(attrs)
                 .setOnAudioFocusChangeListener(focusListener, mainHandler)
                 .build()
+            audioFocusRequest = req
             audioManager.requestAudioFocus(req)
         } else {
             audioManager.requestAudioFocus(

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Monochrome notification icon (alpha-only). Required by Android: notifications must use
+  a single-color icon; full-color mipmaps display as a white square on the status bar.
+  Reuses the moon+zzz silhouette for brand parity with the sleep theme.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M21.5,15.5 C16.0,15.5 11.0,10.5 11.0,5.0 c0,-0.93 0.12,-1.82 0.34,-2.67 C7.13,3.34 4.0,7.32 4.0,12.0 c0,5.52 4.48,10.0 10.0,10.0 4.68,0 8.66,-3.13 9.67,-7.34 -0.85,0.22 -1.74,0.34 -2.17,0.34z" />
+</vector>

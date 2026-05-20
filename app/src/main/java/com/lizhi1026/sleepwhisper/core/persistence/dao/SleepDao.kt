@@ -9,13 +9,13 @@ import com.lizhi1026.sleepwhisper.core.persistence.entity.SleepSessionEntity
 
 @Dao
 interface SleepDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: SleepSessionEntity)
 
     @Update
     suspend fun update(entity: SleepSessionEntity)
 
-    @Query("SELECT * FROM sleep_session WHERE babyId = :babyId AND endAt IS NULL LIMIT 1")
+    @Query("SELECT * FROM sleep_session WHERE babyId = :babyId AND endAt IS NULL ORDER BY startAt DESC LIMIT 1")
     suspend fun ongoing(babyId: String): SleepSessionEntity?
 
     @Query("SELECT * FROM sleep_session WHERE babyId = :babyId AND startAt >= :sinceMs ORDER BY startAt ASC")

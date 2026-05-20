@@ -20,7 +20,7 @@ class ToastCenter @Inject constructor() {
 
     data class ToastItem(
         @StringRes val messageRes: Int,
-        val arg: String? = null,
+        val args: List<Any> = emptyList(),
         val style: Style = Style.INFO,
         val undo: (() -> Unit)? = null,
         val editAction: (() -> Unit)? = null
@@ -31,12 +31,12 @@ class ToastCenter @Inject constructor() {
 
     fun show(
         @StringRes messageRes: Int,
-        arg: String? = null,
+        args: List<Any> = emptyList(),
         style: Style = Style.INFO,
         undo: (() -> Unit)? = null,
         editAction: (() -> Unit)? = null
     ) {
-        _events.postValue(ToastItem(messageRes, arg, style, undo, editAction))
+        _events.postValue(ToastItem(messageRes, args, style, undo, editAction))
     }
 
     /** Call from UI after rendering — clears the slot so re-renders don't repeat. */

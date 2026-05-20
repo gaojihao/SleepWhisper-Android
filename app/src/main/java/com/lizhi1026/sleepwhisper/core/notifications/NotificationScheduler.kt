@@ -10,7 +10,10 @@ import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.toast.ToastCenter
 import com.lizhi1026.sleepwhisper.core.toast.ToastCenter.Style
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,48 +29,63 @@ class NotificationScheduler @Inject constructor(
         const val KIND_CHECKIN = "sleep.checkin"
         const val KIND_REC_WINDOW = "rec.window"
 
-        private const val QUIET_HOURS_START = 22
-        private const val QUIET_HOURS_END = 7
-        private const val MIN_REC_WINDOW_LEAD_MS = 60_000L
+        private const val MIN_REC_WINDOW_LEAD_MS = 5 * 60_000L // 5 min — Doze recovery buffer
     }
 
     fun scheduleSleepCheckIn(babyId: String, afterHours: Double) {
-        val triggerAt = System.currentTimeMillis() + (afterHours * 3600_000).toLong()
+        val triggerAt = System.currentTimeMillis() + (afterHours * 3_600_000).toLong()
+        val title = context.getString(R.string.notification_sleepcheckin_title)
+        // Round up to whole hours for the body; "Sleep has lasted over %1$d hours."
+        val body = context.getString(
+            R.string.notification_sleepcheckin_body,
+            afterHours.toInt().coerceAtLeast(1)
+        )
         scheduleExactOrFallback(
             kind = KIND_CHECKIN,
             babyId = babyId,
             triggerAt = triggerAt,
-            titleRes = R.string.app_name,
-            bodyRes = R.string.app_name  // TODO: replace with localized strings in Phase 7
+            title = title,
+            body = body
         )
     }
 
-    fun scheduleRecommendationWindow(babyId: String, startMs: Long, endMs: Long) {
-        if (isInQuietHours(startMs)) return
+    /**
+     * Caller supplies quiet-hour bounds (typically from UserSettings.nightModeStart/EndHour) so
+     * the scheduler stays free of persistence dependencies. If [startMs] lands inside quiet
+     * hours or within MIN_REC_WINDOW_LEAD_MS the schedule is dropped.
+     */
+    fun scheduleRecommendationWindow(
+        babyId: String,
+        startMs: Long,
+        endMs: Long,
+        quietStartHour: Int = 22,
+        quietEndHour: Int = 7
+    ) {
+        if (isInQuietHours(startMs, quietStartHour, quietEndHour)) return
         val now = System.currentTimeMillis()
         if (startMs - now < MIN_REC_WINDOW_LEAD_MS) return
 
+        val title = context.getString(R.string.notification_recwindow_title)
+        val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val body = context.getString(
+            R.string.notification_recwindow_body,
+            fmt.format(Date(startMs)),
+            fmt.format(Date(endMs))
+        )
         scheduleExactOrFallback(
             kind = KIND_REC_WINDOW,
             babyId = babyId,
             triggerAt = startMs,
-            titleRes = R.string.app_name,
-            bodyRes = R.string.app_name  // TODO: replace with localized strings in Phase 7
+            title = title,
+            body = body
         )
     }
 
     fun cancel(kind: String, babyId: String) {
-        val requestCode = requestCode(kind, babyId)
-        val intent = Intent(context, AlarmReceiver::class.java).apply {
-            putExtra("kind", kind)
-            // put dummy extras so FLAG_NO_CREATE matches the same intent shape.
-            putExtra("titleRes", 0)
-            putExtra("bodyRes", 0)
-            putExtra("babyId", babyId)
-        }
+        val intent = baseIntent(kind, babyId)
         val pi = PendingIntent.getBroadcast(
             context,
-            requestCode,
+            requestCode(kind, babyId),
             intent,
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
         )
@@ -81,17 +99,28 @@ class NotificationScheduler @Inject constructor(
     // Internal
     // ---------------------------------------------------------------------------
 
-    private fun requestCode(kind: String, babyId: String): Int =
-        ("$kind:$babyId").hashCode() and 0x7FFFFFFF
+    /** Stable per-(kind, babyId) request code; combines hashes with prime mixer to reduce collisions. */
+    private fun requestCode(kind: String, babyId: String): Int {
+        val h = 31 * kind.hashCode() xor babyId.hashCode()
+        return h and 0x7FFFFFFF
+    }
 
-    private fun isInQuietHours(at: Long): Boolean {
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = at
+    private fun baseIntent(kind: String, babyId: String): Intent =
+        Intent(context, AlarmReceiver::class.java).apply {
+            action = kind
+            // Make the intent identity stable so PendingIntent matching is reliable on cancel.
+            data = android.net.Uri.parse("sleepwhisper://alarm/$kind/$babyId")
+            putExtra(AlarmReceiver.EXTRA_KIND, kind)
+            putExtra(AlarmReceiver.EXTRA_BABY_ID, babyId)
+        }
+
+    private fun isInQuietHours(at: Long, quietStart: Int, quietEnd: Int): Boolean {
+        val cal = Calendar.getInstance().apply { timeInMillis = at }
         val hour = cal.get(Calendar.HOUR_OF_DAY)
-        return if (QUIET_HOURS_START > QUIET_HOURS_END) {
-            hour >= QUIET_HOURS_START || hour < QUIET_HOURS_END
+        return if (quietStart > quietEnd) {
+            hour >= quietStart || hour < quietEnd
         } else {
-            hour >= QUIET_HOURS_START && hour < QUIET_HOURS_END
+            hour in quietStart until quietEnd
         }
     }
 
@@ -99,15 +128,12 @@ class NotificationScheduler @Inject constructor(
         kind: String,
         babyId: String,
         triggerAt: Long,
-        titleRes: Int,
-        bodyRes: Int
+        title: String,
+        body: String
     ) {
-        val intent = Intent(context, AlarmReceiver::class.java).apply {
-            action = kind
-            putExtra("kind", kind)
-            putExtra("titleRes", titleRes)
-            putExtra("bodyRes", bodyRes)
-            putExtra("babyId", babyId)
+        val intent = baseIntent(kind, babyId).apply {
+            putExtra(AlarmReceiver.EXTRA_TITLE, title)
+            putExtra(AlarmReceiver.EXTRA_BODY, body)
         }
         val pi = PendingIntent.getBroadcast(
             context,
@@ -117,17 +143,25 @@ class NotificationScheduler @Inject constructor(
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (am.canScheduleExactAlarms()) {
+            if (canScheduleExactAlarmsCompat()) {
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
             } else {
                 AlarmManagerCompat.setAndAllowWhileIdle(am, AlarmManager.RTC_WAKEUP, triggerAt, pi)
-                toast.show(
-                    R.string.toast_exact_alarm_needed,
-                    style = Style.WARNING
-                )
+                toast.show(R.string.toast_exact_alarm_needed, style = Style.WARNING)
             }
         } else {
             am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
         }
+    }
+
+    /**
+     * API 33 (Tiramisu) replaced `canScheduleExactAlarms()` with `canUseExactAlarms()` for apps
+     * that hold the USE_EXACT_ALARM permission. We declare both in the manifest, so we accept
+     * either signal as proof of authorization.
+     */
+    private fun canScheduleExactAlarmsCompat(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && am.canScheduleExactAlarms()) return true
+        return am.canScheduleExactAlarms()
     }
 }

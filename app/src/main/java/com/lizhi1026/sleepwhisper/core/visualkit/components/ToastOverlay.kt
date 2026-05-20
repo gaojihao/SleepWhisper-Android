@@ -62,8 +62,8 @@ fun ToastOverlay(
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
             val safeItem = item ?: return@AnimatedVisibility
-            val text = if (safeItem.arg != null)
-                stringResource(safeItem.messageRes, safeItem.arg)
+            val text = if (safeItem.args.isNotEmpty())
+                stringResource(safeItem.messageRes, *safeItem.args.toTypedArray())
             else stringResource(safeItem.messageRes)
             val tint: Color = when (safeItem.style) {
                 ToastCenter.Style.INFO -> SWColor.primary(scheme)

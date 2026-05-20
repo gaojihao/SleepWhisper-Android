@@ -15,6 +15,7 @@ import com.lizhi1026.sleepwhisper.core.notifications.NotificationScheduler
 import com.lizhi1026.sleepwhisper.core.persistence.Repository
 import com.lizhi1026.sleepwhisper.core.persistence.SettingsStore
 import com.lizhi1026.sleepwhisper.core.recommendation.RecommendationEngine
+import com.lizhi1026.sleepwhisper.core.strings.displayKey
 import com.lizhi1026.sleepwhisper.core.theme.ThemeProvider
 import com.lizhi1026.sleepwhisper.core.toast.ToastCenter
 import com.lizhi1026.sleepwhisper.model.Baby
@@ -160,10 +161,11 @@ class AppStateContainer @Inject constructor(
         _hasSeenOnboardingHints.value = true
     }
 
-    /** Returns NIGHT if the current local hour is >=22 or <6; otherwise NAP. */
+    /** Returns NIGHT if the current local hour is inside the user's configured night window. */
     fun defaultSleepType(at: Long = System.currentTimeMillis()): SleepType {
         val hour = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(at), ZoneId.systemDefault()).hour
-        return if (hour >= 22 || hour < 6) SleepType.NIGHT else SleepType.NAP
+        val s = _settings.value ?: UserSettings.DEFAULT
+        return if (s.isInNightTime(hour)) SleepType.NIGHT else SleepType.NAP
     }
 
     suspend fun startSleep(type: SleepType? = null) {
@@ -178,10 +180,14 @@ class AppStateContainer @Inject constructor(
         repo.appendSleep(session)
         _ongoingSleep.postValue(session)
         notif.scheduleSleepCheckIn(b.id, afterHours = 2.0)
-        // Start foreground service + cry detection (cry is gated on settings).
+        // Start foreground service + cry detection (cry is gated on settings & permission).
         val s = _settings.value ?: UserSettings.DEFAULT
         if (s.cryDetectionEnabled) {
-            PlaybackForegroundService.startCry(context, s.cryDetectionThresholdDb)
+            if (CryDetectionService.hasMicrophonePermission(context)) {
+                PlaybackForegroundService.startCry(context, s.cryDetectionThresholdDb)
+            } else {
+                toast.show(R.string.toast_mic_perm_needed, style = ToastCenter.Style.WARNING)
+            }
         }
     }
 
@@ -211,8 +217,15 @@ class AppStateContainer @Inject constructor(
             startedAt = System.currentTimeMillis()
         )
         repo.appendFeeding(event)
+        val methodLabel = context.getString(method.displayKey())
+        val (messageRes, args) = if (method == FeedingMethod.BOTTLE && amountMl != null) {
+            R.string.toast_loggedml to listOf<Any>(methodLabel, amountMl)
+        } else {
+            R.string.toast_logged to listOf<Any>(methodLabel)
+        }
         toast.show(
-            messageRes = R.string.app_name, // TODO Phase 7: localized "logged" message
+            messageRes = messageRes,
+            args = args,
             style = ToastCenter.Style.SUCCESS,
             undo = { scope.launch { repo.deleteFeeding(event.id) } },
             editAction = { _pendingEditTarget.value = EventEditTarget.Feeding(event) }
@@ -233,7 +246,8 @@ class AppStateContainer @Inject constructor(
         )
         repo.appendDiaper(event)
         toast.show(
-            messageRes = R.string.app_name, // TODO Phase 7
+            messageRes = R.string.toast_logged,
+            args = listOf(context.getString(type.displayKey())),
             style = ToastCenter.Style.SUCCESS,
             undo = { scope.launch { repo.deleteDiaper(event.id) } },
             editAction = { _pendingEditTarget.value = EventEditTarget.Diaper(event) }
