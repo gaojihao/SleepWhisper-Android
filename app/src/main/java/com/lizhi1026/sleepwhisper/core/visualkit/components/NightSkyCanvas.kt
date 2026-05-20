@@ -50,6 +50,21 @@ private const val DRIFTING_STAR_COUNT = 6
 private const val DRIFTING_STAR_SEED = 0xD81FA1L
 private const val DRIFTING_RESPAWN_FADE_MS = 800L
 
+private data class Meteor(
+    val startX: Float,       // normalized x where meteor head starts (off-screen left, e.g. -0.05)
+    val startY: Float,       // 0.1..0.6 normalized
+    val angleRad: Float,     // [-30°, +30°] from horizontal, in radians
+    val spawnedAtMs: Long    // wall-clock spawn time
+)
+
+private const val METEOR_LIFE_MS = 600L
+private const val METEOR_FADE_START_MS = 400L  // fade begins at 400ms of 600ms life
+private const val METEOR_HEAD_DP = 16f
+private const val METEOR_TAIL_LENGTH_DP = 60f
+private const val METEOR_TAIL_THICKNESS_DP = 2f
+private const val METEOR_MIN_INTERVAL_MS = 90_000L   // 90s
+private const val METEOR_MAX_INTERVAL_MS = 180_000L  // 180s
+
 // Canvas frame interval. 33ms ≈ 30fps. Higher than the master spec's "10fps for
 // twinkles" target because the same animation loop drives meteor and drifting-star
 // rendering in subsequent tasks, both of which need 30fps to look smooth. Stars
@@ -155,6 +170,32 @@ fun NightSkyCanvas(
     }
     val reduce = LocalReduceMotion.current
 
+    // Layer 4 — meteor showers. Single meteor visible at any moment. Spawns every
+    // 90-180s. Disabled on reduce-motion and on low-RAM devices.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val isLowRam = remember {
+        val am = context.getSystemService(android.content.Context.ACTIVITY_SERVICE)
+            as? android.app.ActivityManager
+        am?.isLowRamDevice ?: false
+    }
+    var activeMeteor by remember { mutableStateOf<Meteor?>(null) }
+    if (!reduce && !isLowRam) {
+        LaunchedEffect(Unit) {
+            while (true) {
+                val nextDelay = Random.nextLong(METEOR_MIN_INTERVAL_MS, METEOR_MAX_INTERVAL_MS)
+                delay(nextDelay)
+                activeMeteor = Meteor(
+                    startX = -0.05f,
+                    startY = 0.1f + Random.nextFloat() * 0.5f,
+                    angleRad = ((-30 + Random.nextFloat() * 60) * PI / 180f).toFloat(),
+                    spawnedAtMs = System.currentTimeMillis()
+                )
+                delay(METEOR_LIFE_MS)
+                activeMeteor = null
+            }
+        }
+    }
+
     Canvas(
         modifier = modifier
             .alpha(morphProgress.coerceIn(0f, 1f))
@@ -195,6 +236,40 @@ fun NightSkyCanvas(
                 radius = ds.baseSizeDp.dp.toPx(),
                 center = Offset(ds.nx * size.width, ds.ny * size.height)
             )
+        }
+        // Layer 4 — meteor streak (if active). Re-read twinkleClockMs (a state)
+        // here just to force this draw pass to recompose when the canvas clock
+        // ticks — otherwise the meteor head/tail position would only update
+        // when `activeMeteor` itself changes (spawn / unspawn), once per ~120s.
+        if (activeMeteor != null) {
+            // Touching twinkleClockMs ensures recomposition on each frame.
+            @Suppress("UNUSED_EXPRESSION") twinkleClockMs
+        }
+        activeMeteor?.let { m ->
+            val ageMs = System.currentTimeMillis() - m.spawnedAtMs
+            val lifeFraction = ageMs.toFloat() / METEOR_LIFE_MS.toFloat()
+            if (lifeFraction in 0f..1f) {
+                val headX = m.startX + (1.1f - m.startX) * lifeFraction
+                val headY = m.startY + sin(m.angleRad) * (lifeFraction * 0.3f)
+                val tailDx = -kotlin.math.cos(m.angleRad) * (METEOR_TAIL_LENGTH_DP.dp.toPx())
+                val tailDy = -sin(m.angleRad) * (METEOR_TAIL_LENGTH_DP.dp.toPx())
+                val alpha = if (ageMs < METEOR_FADE_START_MS) 1f
+                            else 1f - (ageMs - METEOR_FADE_START_MS) / (METEOR_LIFE_MS - METEOR_FADE_START_MS).toFloat()
+
+                // Tail: tapered line from head backwards
+                drawLine(
+                    color = Color.White.copy(alpha = alpha * 0.6f),
+                    start = Offset(headX * size.width + tailDx, headY * size.height + tailDy),
+                    end = Offset(headX * size.width, headY * size.height),
+                    strokeWidth = METEOR_TAIL_THICKNESS_DP.dp.toPx()
+                )
+                // Head: brighter dot
+                drawCircle(
+                    color = Color.White.copy(alpha = alpha),
+                    radius = METEOR_HEAD_DP.dp.toPx() / 2f,
+                    center = Offset(headX * size.width, headY * size.height)
+                )
+            }
         }
     }
 }
