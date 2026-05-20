@@ -2,7 +2,6 @@ package com.lizhi1026.sleepwhisper.core.visualkit.components
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -12,76 +11,78 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
+import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 
-/** Visual intensity for [PulseRing] — port of iOS PulseRing.Intensity. */
-enum class PulseIntensity(
-    val topAlpha: Float,
-    val midAlpha: Float,
-    val lineWidthDp: Float
-) {
-    /** Used on dark / night backgrounds; brighter rings. */
-    STRONG(topAlpha = 0.55f, midAlpha = 0.40f, lineWidthDp = 1.5f),
-    /** Used on light backgrounds; subdued so they don't clash with accent CTA. */
-    SOFT(topAlpha = 0.20f, midAlpha = 0.14f, lineWidthDp = 1.0f)
-}
+enum class PulseIntensity { SOFT, STRONG }
 
 /**
- * Two concentric expanding-fading rings — port of iOS PulseRing.swift.
- * `radius` is the **inner** ring radius; each ring scales from 1.0 → 1.8 while alpha fades to 0,
- * over 3 seconds, infinite repeat. The second ring is phase-offset by 1.5s.
+ * Aurora 3-ring pulse. Each ring is a slightly different hue (orange → orange/purple → purple)
+ * with offset phases, giving CTAs a *halo* rather than a single ring.
+ *
+ * Public signature is unchanged from the prior single-ring version so existing callers
+ * (HomeScreen Sleep CTA) work without edits.
  */
 @Composable
 fun PulseRing(
     modifier: Modifier = Modifier,
     color: Color,
-    radius: Dp = 80.dp,
-    intensity: PulseIntensity = PulseIntensity.STRONG
+    radius: Dp = 100.dp,
+    intensity: PulseIntensity = PulseIntensity.SOFT
 ) {
-    val reduceMotion = LocalReduceMotion.current
-    if (reduceMotion) {
-        // Static fallback: render the inner ring at full alpha, no animation.
-        Canvas(modifier = modifier.size(radius * 2).clearAndSetSemantics { }) {
-            val r = radius.toPx()
-            val stroke = Stroke(width = intensity.lineWidthDp.dp.toPx())
-            drawCircle(color = color.copy(alpha = intensity.topAlpha), radius = r, style = stroke)
+    val reduce = LocalReduceMotion.current
+    val scheme = LocalSWScheme.current
+    val secondary = SWColor.accentSecondary(scheme)
+
+    if (reduce) {
+        // Static halo at resting state — render the three rings without animation.
+        Canvas(modifier = modifier.size(radius * 2)) {
+            val maxAlpha = if (intensity == PulseIntensity.STRONG) 0.18f else 0.10f
+            val center = Offset(size.width / 2, size.height / 2)
+            drawCircle(color.copy(alpha = maxAlpha * 0.8f), radius = size.minDimension * 0.45f, center = center, style = Stroke(width = 2f))
+            drawCircle(lerp(color, secondary, 0.5f).copy(alpha = maxAlpha * 0.6f), radius = size.minDimension * 0.55f, center = center, style = Stroke(width = 2f))
+            drawCircle(secondary.copy(alpha = maxAlpha * 0.4f), radius = size.minDimension * 0.65f, center = center, style = Stroke(width = 2f))
         }
         return
     }
-    val t = rememberInfiniteTransition(label = "pulse")
-    val cycleMs = 3000
 
-    val scale1 by t.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.8f,
+    val t = rememberInfiniteTransition(label = "pulse")
+    val period = 2800
+    val phase by t.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = cycleMs, easing = LinearEasing),
+            animation = tween(period, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "ring1-scale"
+        label = "phase"
     )
-    val scale2 by t.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = cycleMs, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-            initialStartOffset = StartOffset(cycleMs / 2)
-        ),
-        label = "ring2-scale"
-    )
-
-    Canvas(modifier = modifier.size(radius * 2).clearAndSetSemantics { }) {
-        val r = radius.toPx()
-        val stroke = Stroke(width = intensity.lineWidthDp.dp.toPx())
-        val a1 = ((1.8f - scale1) / 0.8f).coerceIn(0f, 1f) * intensity.topAlpha
-        val a2 = ((1.8f - scale2) / 0.8f).coerceIn(0f, 1f) * intensity.midAlpha
-        drawCircle(color = color.copy(alpha = a1), radius = r * scale1, style = stroke)
-        drawCircle(color = color.copy(alpha = a2), radius = r * scale2, style = stroke)
+    Canvas(modifier = modifier.size(radius * 2)) {
+        val maxAlpha = if (intensity == PulseIntensity.STRONG) 0.32f else 0.18f
+        val center = Offset(size.width / 2, size.height / 2)
+        // Three rings, phase-offset by 1/3 each, growing outward and fading.
+        for (i in 0 until 3) {
+            val ringPhase = ((phase + i / 3f) % 1f)
+            val ringColor = when (i) {
+                0 -> color
+                1 -> lerp(color, secondary, 0.5f)
+                else -> secondary
+            }
+            val ringRadius = size.minDimension * (0.35f + 0.30f * ringPhase)
+            val ringAlpha = maxAlpha * (1f - ringPhase)
+            drawCircle(
+                color = ringColor.copy(alpha = ringAlpha),
+                radius = ringRadius,
+                center = center,
+                style = Stroke(width = 2f)
+            )
+        }
     }
 }
