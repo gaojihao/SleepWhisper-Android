@@ -20,13 +20,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +43,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
+import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel
+import com.lizhi1026.sleepwhisper.core.visualkit.components.sleepHeroOrigin
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
@@ -49,6 +57,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.LocalHeroBackdropController
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
+import kotlinx.coroutines.launch
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
@@ -127,8 +136,20 @@ fun HomeScreen(
 
             QuickActionsGrid(vm, onBottleTap = { showBottleSheet = true })
 
+            val morphScope = rememberCoroutineScope()
+            val morphProgress by remember(vm.app.morphProgress) {
+                derivedStateOf { vm.app.morphProgress.value }
+            }
             SleepCTA(
-                onTap = vm::onTapSleep,
+                sharedScope = sharedScope,
+                animScope = animScope,
+                morphProgress = morphProgress,
+                onTap = {
+                    if (morphProgress <= 0f || morphProgress >= 1f) {
+                        morphScope.launch { vm.app.beginSleepMorph() }
+                        vm.onTapSleep()
+                    }
+                },
                 onLongPress = { showSleepTypePicker = true }
             )
 
@@ -345,26 +366,33 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun SleepCTA(onTap: () -> Unit, onLongPress: () -> Unit) {
+private fun SleepCTA(
+    sharedScope: SharedTransitionScope,
+    animScope: AnimatedVisibilityScope,
+    morphProgress: Float,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit
+) {
     val scheme = LocalSWScheme.current
+    val isMorphing = morphProgress > 0f && morphProgress < 1f
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = SWSpacing.md),
+            .padding(top = SWSpacing.huge),
         contentAlignment = Alignment.Center
     ) {
         PulseRing(
             color = SWColor.accent(scheme),
-            radius = 110.dp,
-            // STRONG on every scheme — iOS-equivalent visibility per real-device feedback;
-            // SOFT was too dim against the warm-orange CTA on light backgrounds.
-            intensity = com.lizhi1026.sleepwhisper.core.visualkit.components.PulseIntensity.STRONG
+            radius = 140.dp,
+            intensity = PulseIntensity.STRONG
         )
         Box(
             modifier = Modifier
                 .widthIn(max = 280.dp)
                 .fillMaxWidth()
+                .sleepHeroOrigin(sharedScope, animScope)
                 .pointerInput(onTap, onLongPress) {
                     detectTapGestures(
                         onLongPress = { onLongPress() },
@@ -375,8 +403,9 @@ private fun SleepCTA(onTap: () -> Unit, onLongPress: () -> Unit) {
             SoftButton(
                 text = stringResource(R.string.home_sleepcta),
                 onClick = onTap,
-                style = SoftButtonStyle.ACCENT,
+                style = SoftButtonStyle.HERO,
                 leadingIconRes = R.drawable.ic_moon_zzz,
+                enabled = !isMorphing,
                 modifier = Modifier.fillMaxWidth()
             )
         }
