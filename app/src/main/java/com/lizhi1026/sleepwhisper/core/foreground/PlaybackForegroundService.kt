@@ -2,6 +2,7 @@ package com.lizhi1026.sleepwhisper.core.foreground
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -75,11 +76,22 @@ class PlaybackForegroundService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
 
+        // CRITICAL ordering: call startForeground BEFORE registering observers.
+        //
+        // observeForever dispatches the LiveData's cached value synchronously to a new
+        // observer. audioPlayer.stateLive is typically cached as Idle (subscribed elsewhere
+        // by SleepingScreen/PlayerScreen). The synchronous callback then runs
+        // considerStoppingIfIdle() → stopSelf(). If stopSelf() lands before startForeground()
+        // the system raises ForegroundServiceDidNotStartInTimeException on Android 12+.
+        //
+        // Default service type is MEDIA_PLAYBACK only — it does NOT require RECORD_AUDIO,
+        // so we can come up even when the caller is just sending a stop-cry message and the
+        // user has denied microphone permission. The MICROPHONE bit is added on demand when
+        // ACTION_START_CRY arrives (caller has already verified RECORD_AUDIO).
+        startForegroundCompat(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+
         audioPlayer.stateLive.observeForever(audioObserver)
         cryDetection.stateLive.observeForever(cryObserver)
-
-        // Bring this Service to foreground immediately.
-        startForeground(NOTIF_ID, buildNotification())
     }
 
     private fun considerStoppingIfIdle() {
@@ -111,12 +123,20 @@ class PlaybackForegroundService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        // Alongside onStartCommand, the service comes up ready to handle audio/cry sub-commands
-        // through the same foreground lifecycle. Re-raise the foreground notification so it is
-        // guaranteed to be on screen before we touch internal audio/cry state.
-        startForeground(NOTIF_ID, buildNotification())
 
         val action = intent?.action
+        // Promote the foreground-service type to include MICROPHONE only when actually
+        // starting cry detection. The caller (AppStateContainer.startSleep) verifies
+        // RECORD_AUDIO before issuing ACTION_START_CRY, so the system permission check
+        // for the microphone type will succeed.
+        val typeMask = if (action == ACTION_START_CRY) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        } else {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+        }
+        startForegroundCompat(typeMask)
+
         when (action) {
             ACTION_START_PLAYBACK -> {
                 val presetId = intent.getStringExtra(EXTRA_PRESET_ID) ?: return START_NOT_STICKY
@@ -138,6 +158,14 @@ class PlaybackForegroundService : LifecycleService() {
         }
 
         return START_NOT_STICKY
+    }
+
+    private fun startForegroundCompat(typeMask: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, buildNotification(), typeMask)
+        } else {
+            startForeground(NOTIF_ID, buildNotification())
+        }
     }
 
     override fun onDestroy() {
