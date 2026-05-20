@@ -85,13 +85,11 @@ fun SleepingScreen(vm: SleepingViewModel = hiltViewModel()) {
 
     val elapsedSec = ongoing?.let { (nowMs - it.startAt) / 1000 } ?: 0L
 
-    // If the user is in NIGHT mode, honor the red-light scheme so a 3 a.m. wake-up isn't
-    // blasted with the standard dark theme. Other schemes collapse to DARK because the
-    // sleeping screen is designed as an immersive dark surface.
-    val parentScheme = LocalSWScheme.current
-    val sleepScheme = if (parentScheme == SWScheme.NIGHT) SWScheme.NIGHT else SWScheme.DARK
-    CompositionLocalProvider(LocalSWScheme provides sleepScheme) {
-        Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(sleepScheme))) {
+    // Force DARK scheme regardless of system. Sleeping is an immersive cinematic surface
+    // designed against the dark palette (deep blue starfield, cool glows) — overriding it
+    // with the NIGHT red-light scheme changes the visual identity completely.
+    CompositionLocalProvider(LocalSWScheme provides SWScheme.DARK) {
+        Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(SWScheme.DARK))) {
             Starfield(modifier = Modifier.fillMaxSize(), density = 80)
             Column(
                 modifier = Modifier
