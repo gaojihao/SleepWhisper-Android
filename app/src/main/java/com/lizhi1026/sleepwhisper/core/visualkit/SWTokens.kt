@@ -1,5 +1,8 @@
 package com.lizhi1026.sleepwhisper.core.visualkit
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.dp
 
 /** Spacing scale (4-based) — direct port of iOS SWSpacing. */
@@ -26,16 +29,35 @@ object SWRadius {
     val pill = 999.dp
 }
 
-/** Motion / duration tokens — direct port of iOS SWMotion. Durations are in milliseconds. */
+/**
+ * Motion / duration tokens. Cinematic-breath rhythm: snappy inhale on press,
+ * longer exhale on release, generous transitions. Hero/backdrop durations are new
+ * for the Aurora redesign (Phase 0+).
+ */
 object SWMotion {
-    const val pressInMs = 100
-    const val pressOutMs = 150
-    const val screenInMs = 250
-    const val screenOutMs = 200
-    const val toastMs = 200
-    const val bannerMs = 200
-    const val numberSwitchMs = 100
-    const val longPressMs = 600L
-    const val fadeInMs = 1500L
-    const val defaultFadeOutMs = 5000L
+    const val pressInMs = 80         // was 100
+    const val pressOutMs = 260       // was 150
+    const val screenInMs = 420       // was 250
+    const val screenOutMs = 320      // was 200
+    const val heroMorphMs = 1200     // NEW — Hero #1 transition
+    const val backdropDriftMs = 18000 // NEW — Aurora ribbon drift cycle
+    const val breathCycleMs = 4200   // NEW — card breathing period
+    const val toastMs = 200          // unchanged
+    const val bannerMs = 200         // unchanged
+    const val numberSwitchMs = 100   // unchanged
+    const val longPressMs = 600L     // unchanged
+    const val fadeInMs = 1500L       // unchanged
+    const val defaultFadeOutMs = 5000L // unchanged
+}
+
+/**
+ * Shared spring specs. Use `SWSpring.gentle` for every interactive element so the
+ * whole app speaks one tactile language.
+ */
+object SWSpring {
+    val gentle: SpringSpec<Float> = spring(
+        dampingRatio = 0.85f,
+        stiffness = 180f,
+        visibilityThreshold = Spring.DefaultDisplacementThreshold
+    )
 }
