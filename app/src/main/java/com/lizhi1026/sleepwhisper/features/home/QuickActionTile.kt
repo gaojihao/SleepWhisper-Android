@@ -42,6 +42,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
+import com.lizhi1026.sleepwhisper.core.visualkit.components.innerHighlight
 
 /** Tile tint — port of iOS QuickActionTile tint cases. */
 enum class TileTint { PEACH, MINT, LILAC }
@@ -114,7 +115,8 @@ fun QuickActionTile(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(tintBg),
+                    .background(tintBg)
+                    .innerHighlight(cornerRadius = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
