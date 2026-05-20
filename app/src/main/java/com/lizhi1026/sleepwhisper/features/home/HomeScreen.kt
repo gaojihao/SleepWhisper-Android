@@ -148,23 +148,27 @@ private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
             ChronoUnit.DAYS.between(birth, today).toInt().coerceAtLeast(0)
         }
     }
-    Row(verticalAlignment = Alignment.Bottom) {
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
         BasicText(
             text = stringResource(greetingForHour(hour)),
             style = SWFont.serifItalic(17).copy(color = SWColor.textPrimary(scheme))
         )
-        babyName?.let {
-            BasicText(
-                text = "  $it",
-                style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
-            )
-        }
-        daysOld?.let {
-            BasicText(
-                text = stringResource(R.string.home_daycount, it),
-                style = SWFont.bodyMD().copy(color = SWColor.textTertiary(scheme)),
-                modifier = Modifier.padding(start = SWSpacing.xs, bottom = 4.dp)
-            )
+        if (babyName != null || daysOld != null) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                babyName?.let {
+                    BasicText(
+                        text = it,
+                        style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
+                    )
+                }
+                daysOld?.let {
+                    BasicText(
+                        text = stringResource(R.string.home_daycount, it),
+                        style = SWFont.bodyMD().copy(color = SWColor.textTertiary(scheme)),
+                        modifier = Modifier.padding(start = SWSpacing.xs, bottom = 4.dp)
+                    )
+                }
+            }
         }
     }
 }
