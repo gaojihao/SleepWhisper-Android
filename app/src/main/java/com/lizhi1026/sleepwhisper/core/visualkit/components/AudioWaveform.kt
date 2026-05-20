@@ -1,30 +1,34 @@
 package com.lizhi1026.sleepwhisper.core.visualkit.components
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.abs
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
+import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
+import kotlin.math.PI
 import kotlin.math.sin
-import kotlin.random.Random
 
 /**
- * N-bar audio waveform — port of iOS AudioWaveform.swift.
- * Bars sin-oscillate between 30% and 90% height while [isPlaying] is true, else collapse to 15%.
+ * Aurora waveform. Bars follow a sine-perturbed envelope (mimics a real FFT
+ * shape without actually analyzing audio), tween smoothly between frames,
+ * and color along the bar uses a dusk-orange → starlight-purple gradient.
+ *
+ * Animation pauses (or never starts) when `isPlaying = false` OR when
+ * `LocalReduceMotion.current = true`. Public signature preserved.
  */
 @Composable
 fun AudioWaveform(
@@ -33,42 +37,43 @@ fun AudioWaveform(
     color: Color,
     barCount: Int = 14
 ) {
-    val reduceMotion = LocalReduceMotion.current
-    val phases = remember(barCount) { List(barCount) { Random.nextFloat() * 2f } }
-    val periods = remember(barCount) { List(barCount) { 700 + Random.nextInt(400) } }
-    val animatables = remember(barCount) { List(barCount) { Animatable(0.15f) } }
+    val scheme = LocalSWScheme.current
+    val reduce = LocalReduceMotion.current
+    val tint = if (color == Color.Unspecified) SWColor.accent(scheme) else color
+    val secondary = SWColor.accentSecondary(scheme)
 
-    LaunchedEffect(isPlaying, reduceMotion) {
-        if (!isPlaying || reduceMotion) {
-            val target = if (reduceMotion && isPlaying) 0.55f else 0.15f
-            animatables.forEach { a -> launch { a.animateTo(target, tween(400)) } }
-            return@LaunchedEffect
-        }
-        val startTime = System.currentTimeMillis()
-        while (true) {
-            val now = System.currentTimeMillis() - startTime
-            animatables.forEachIndexed { i, anim ->
-                val s = sin(now.toFloat() / periods[i] * Math.PI.toFloat() * 2 + phases[i])
-                val target = 0.3f + 0.6f * ((s + 1f) / 2f)
-                launch { anim.snapTo(target) }
-            }
-            delay(50)
-        }
-    }
+    val animate = isPlaying && !reduce
+    val phase = if (animate) {
+        val t = rememberInfiniteTransition(label = "wave")
+        val v by t.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1800, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "phase"
+        )
+        v
+    } else 0.5f
 
-    Canvas(modifier = modifier.fillMaxWidth().height(36.dp).clearAndSetSemantics { }) {
-        val gap = 2.dp.toPx()
-        val totalGap = gap * (barCount - 1)
-        val barWidth = (size.width - totalGap) / barCount
-        animatables.forEachIndexed { i, anim ->
-            val h = abs(anim.value) * size.height
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val barWidth = size.width / (barCount * 1.7f)
+        val gap = (size.width - barWidth * barCount) / (barCount - 1).coerceAtLeast(1)
+        val mid = size.height / 2f
+        val brush = Brush.verticalGradient(colors = listOf(tint, secondary))
+        for (i in 0 until barCount) {
+            val t = i.toFloat() / (barCount - 1).coerceAtLeast(1)
+            // Two overlapping sines + a phase offset for variety.
+            val envelope = (sin(PI * t * 2) * 0.5 + 0.5 +
+                            sin((phase + t) * PI * 2) * 0.35).toFloat()
+            val barH = (size.height * 0.18f + size.height * 0.6f * envelope).coerceAtLeast(barWidth)
             val x = i * (barWidth + gap)
-            val y = (size.height - h) / 2f
             drawRoundRect(
-                color = color,
-                topLeft = Offset(x, y),
-                size = Size(barWidth, h),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx(), 2.dp.toPx())
+                brush = brush,
+                topLeft = Offset(x, mid - barH / 2),
+                size = Size(barWidth, barH),
+                cornerRadius = CornerRadius(barWidth / 2)
             )
         }
     }
