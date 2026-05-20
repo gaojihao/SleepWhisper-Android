@@ -1,7 +1,12 @@
 package com.lizhi1026.sleepwhisper.core.visualkit.components
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,11 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
@@ -38,11 +46,12 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 
-enum class SoftButtonStyle { PRIMARY, ACCENT, GHOST }
+enum class SoftButtonStyle { PRIMARY, ACCENT, GHOST, HERO }
 
 /**
  * Pill-shaped CTA button — port of iOS Core/VisualKit/SoftButton.swift.
- * Three styles: PRIMARY (primary gradient), ACCENT (accent gradient), GHOST (transparent + border).
+ * Four styles: PRIMARY (primary gradient), ACCENT (accent gradient),
+ * GHOST (transparent + border), HERO (aurora glow + pulsing outer shadow).
  */
 @Composable
 fun SoftButton(
@@ -55,6 +64,7 @@ fun SoftButton(
     leadingIcon: (@Composable () -> Unit)? = null
 ) {
     val scheme = LocalSWScheme.current
+    val reduce = LocalReduceMotion.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -64,13 +74,47 @@ fun SoftButton(
     )
     val shape = RoundedCornerShape(SWRadius.pill)
 
+    // HERO outer-glow pulse — computed at the composable scope so it can be applied
+    // inside the bgModifier `when`. Falls back to a static mid-alpha under reduce-motion.
+    val heroGlowAlpha = if (style == SoftButtonStyle.HERO && !reduce) {
+        val t = rememberInfiniteTransition(label = "hero-glow")
+        val v by t.animateFloat(
+            initialValue = 0.35f,
+            targetValue = 0.55f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(SWMotion.breathCycleMs, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "alpha"
+        )
+        v
+    } else 0.45f
+    val heroAccent = SWColor.accent(scheme)
+
     val bgModifier = when (style) {
         SoftButtonStyle.PRIMARY -> Modifier.background(SWGradient.primary(scheme))
         SoftButtonStyle.ACCENT -> Modifier.background(SWGradient.accent(scheme))
         SoftButtonStyle.GHOST -> Modifier.border(1.dp, SWColor.border(scheme), shape)
+        SoftButtonStyle.HERO -> Modifier
+            .shadow(
+                elevation = 24.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = heroAccent.copy(alpha = heroGlowAlpha),
+                spotColor = heroAccent.copy(alpha = heroGlowAlpha)
+            )
+            .background(SWGradient.auroraGlow(scheme))
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    0f to Color.White.copy(alpha = 0.35f),
+                    0.4f to Color.Transparent
+                ),
+                shape = shape
+            )
     }
     val textColor: Color = when (style) {
-        SoftButtonStyle.PRIMARY, SoftButtonStyle.ACCENT -> Color.White
+        SoftButtonStyle.PRIMARY, SoftButtonStyle.ACCENT, SoftButtonStyle.HERO -> Color.White
         SoftButtonStyle.GHOST -> SWColor.textPrimary(scheme)
     }
 
