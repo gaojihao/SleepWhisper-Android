@@ -133,6 +133,14 @@
     <string name="settings_export_pdf">导出 PDF 给儿科医生</string>
     <string name="settings_fadeaftersleep">睡着后淡出 %1$d 分钟</string>
     <string name="settings_haptics">触觉反馈</string>
+    <string name="settings_defaulttimer_label">默认定时</string>
+    <string name="settings_fadeaftersleep_label">睡着后淡出</string>
+    <string name="settings_cry_sensitivity_label">灵敏度</string>
+    <string name="settings_minutes_value">%1$d 分钟</string>
+    <string name="settings_db_value">%1$d dB</string>
+    <string name="settings_age_display_yearsmonthsdays">%1$d岁%2$d月%3$d天</string>
+    <string name="settings_age_display_monthsdays">%1$d月%2$d天</string>
+    <string name="settings_age_display_days">%1$d天</string>
     <string name="settings_icloud">iCloud 同步</string>
     <string name="settings_icloud_note">所有数据本地存储，仅同步到你的私人 iCloud。</string>
     <string name="settings_nightmode_label">夜间红光时段</string>

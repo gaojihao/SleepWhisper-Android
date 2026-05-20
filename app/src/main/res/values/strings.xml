@@ -133,6 +133,14 @@
     <string name="settings_export_pdf">Export PDF for pediatrician</string>
     <string name="settings_fadeaftersleep">Fade out after sleep %1$d min</string>
     <string name="settings_haptics">Haptic feedback</string>
+    <string name="settings_defaulttimer_label">Default timer</string>
+    <string name="settings_fadeaftersleep_label">Fade out after sleep</string>
+    <string name="settings_cry_sensitivity_label">Sensitivity</string>
+    <string name="settings_minutes_value">%1$d min</string>
+    <string name="settings_db_value">%1$d dB</string>
+    <string name="settings_age_display_yearsmonthsdays">%1$dy %2$dm %3$dd</string>
+    <string name="settings_age_display_monthsdays">%1$dm %2$dd</string>
+    <string name="settings_age_display_days">%1$d d</string>
     <string name="settings_icloud">iCloud sync</string>
     <string name="settings_icloud_note">All data stays on your device and your private iCloud only.</string>
     <string name="settings_nightmode_label">Red night mode hours</string>

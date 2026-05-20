@@ -131,6 +131,7 @@ private fun WeeklyCard(buckets: List<Pair<String, Long>>) {
     val scheme = LocalSWScheme.current
     val totalSec = buckets.sumOf { it.second }
     val avgHours = totalSec.toDouble() / 3600.0 / 7.0
+    val avgHoursFormatted = "%.1f".format(avgHours)
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 22.dp,
@@ -148,7 +149,7 @@ private fun WeeklyCard(buckets: List<Pair<String, Long>>) {
                     style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
                 )
                 BasicText(
-                    text = stringResource(R.string.trends_week_avg, avgHours),
+                    text = stringResource(R.string.trends_week_avg, avgHoursFormatted),
                     style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
                 )
             }

@@ -16,10 +16,15 @@ class SettingsViewModel @Inject constructor(
 
     val baby = app.baby
     val settings: LiveData<UserSettings> = app.settings
+    val forceNightPreview: LiveData<Boolean> = app.themeProvider.forceNightPreview
 
     fun update(transform: (UserSettings) -> UserSettings) {
         val cur = settings.value ?: UserSettings.DEFAULT
         viewModelScope.launch { app.saveSettings(transform(cur)) }
+    }
+
+    fun setForceNightPreview(value: Boolean) {
+        app.themeProvider.setForceNightPreview(value)
     }
 
     fun stopCryDetection() = app.cryDetection.stop()

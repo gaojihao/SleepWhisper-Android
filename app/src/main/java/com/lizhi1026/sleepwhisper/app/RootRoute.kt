@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
@@ -161,9 +162,9 @@ private fun BottomTabs(selected: Int, onSelect: (Int) -> Unit) {
                 .fillMaxWidth()
                 .height(64.dp)
         ) {
-            TabItem("Home", R.drawable.ic_tab_home, selected == 0) { onSelect(0) }
-            TabItem("Trends", R.drawable.ic_tab_trends, selected == 1) { onSelect(1) }
-            TabItem("Settings", R.drawable.ic_tab_settings, selected == 2) { onSelect(2) }
+            TabItem(stringResource(R.string.tabbar_home), R.drawable.ic_tab_home, selected == 0) { onSelect(0) }
+            TabItem(stringResource(R.string.tabbar_trends), R.drawable.ic_tab_trends, selected == 1) { onSelect(1) }
+            TabItem(stringResource(R.string.tabbar_settings), R.drawable.ic_tab_settings, selected == 2) { onSelect(2) }
         }
         // System gesture / nav bar inset.
         Box(modifier = Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.navigationBars))
