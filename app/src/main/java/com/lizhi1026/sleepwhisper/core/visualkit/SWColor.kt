@@ -3,82 +3,88 @@ package com.lizhi1026.sleepwhisper.core.visualkit
 import androidx.compose.ui.graphics.Color
 
 /**
- * Color tokens — direct port of iOS Core/Theme/ColorTokens.swift.
- * Three schemes: DAY (cool white + warm orange accent), DARK (misty blue dark), NIGHT (red-light to reduce blue exposure).
+ * Aurora color tokens. Public API unchanged from the iOS port; values refreshed
+ * for the Aurora redesign (Phase 0). NIGHT scheme values are preserved — their
+ * contrast against the NIGHT surface was tuned to >= 4.5:1 and is not negotiable.
  */
 object SWColor {
 
     fun primary(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(1.00f, 0.54f, 0.40f)
-        SWScheme.DARK  -> Color(0.56f, 0.66f, 0.85f)
-        SWScheme.NIGHT -> Color(0.70f, 0.42f, 0.42f)
+        SWScheme.DAY   -> Color(0xFFFF8A5E)  // dusk orange
+        SWScheme.DARK  -> Color(0xFFFFB088)  // dusk orange
+        SWScheme.NIGHT -> Color(0.70f, 0.42f, 0.42f) // preserved
     }
 
     fun primaryHover(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.96f, 0.47f, 0.33f)
-        SWScheme.DARK  -> Color(0.64f, 0.72f, 0.88f)
+        SWScheme.DAY   -> Color(0xFFFF7A4A)
+        SWScheme.DARK  -> Color(0xFFFFC5A4)
         SWScheme.NIGHT -> Color(0.78f, 0.50f, 0.50f)
     }
 
     fun primaryActive(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.88f, 0.40f, 0.26f)
-        SWScheme.DARK  -> Color(0.73f, 0.78f, 0.91f)
+        SWScheme.DAY   -> Color(0xFFE87646)
+        SWScheme.DARK  -> Color(0xFFFFA378)
         SWScheme.NIGHT -> Color(0.85f, 0.55f, 0.55f)
     }
 
     fun accent(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(1.00f, 0.54f, 0.40f)
-        SWScheme.DARK  -> Color(0.88f, 0.72f, 0.63f)
+        SWScheme.DAY   -> Color(0xFFFF8A5E)
+        SWScheme.DARK  -> Color(0xFFFFB088)
         SWScheme.NIGHT -> Color(0.80f, 0.45f, 0.45f)
     }
 
+    /** Starlight purple — NEW. The second hero accent. NIGHT scheme uses primary instead. */
+    fun accentSecondary(s: SWScheme): Color = when (s) {
+        SWScheme.DAY   -> Color(0xFF9B85FF)
+        SWScheme.DARK  -> Color(0xFFB8A4FF)
+        SWScheme.NIGHT -> Color(0.70f, 0.42f, 0.42f) // falls back to primary tone
+    }
+
     fun surface(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.984f, 0.984f, 0.988f)
-        SWScheme.DARK  -> Color(0.06f, 0.07f, 0.08f)
+        SWScheme.DAY   -> Color(0xFFF4F2EE) // paper warm
+        SWScheme.DARK  -> Color(0xFF07101F) // deep night
         SWScheme.NIGHT -> Color(0.04f, 0.02f, 0.02f)
     }
 
     fun surfaceElevated(s: SWScheme): Color = when (s) {
         SWScheme.DAY   -> Color.White
-        SWScheme.DARK  -> Color(0.10f, 0.11f, 0.14f)
+        SWScheme.DARK  -> Color(0xFF0F1A2D)
         SWScheme.NIGHT -> Color(0.10f, 0.04f, 0.04f)
     }
 
     fun surfaceSunken(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.949f, 0.953f, 0.961f)
-        SWScheme.DARK  -> Color(0.03f, 0.03f, 0.04f)
+        SWScheme.DAY   -> Color(0xFFECEAE5)
+        SWScheme.DARK  -> Color(0xFF050912)
         SWScheme.NIGHT -> Color(0.02f, 0.01f, 0.01f)
     }
 
     fun border(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.910f, 0.918f, 0.929f)
-        SWScheme.DARK  -> Color(0.16f, 0.18f, 0.23f)
+        SWScheme.DAY   -> Color(0xFFE2DDD2)
+        SWScheme.DARK  -> Color(0xFF1A2438)
         SWScheme.NIGHT -> Color(0.16f, 0.07f, 0.07f)
     }
 
     fun textPrimary(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.055f, 0.067f, 0.086f)
-        SWScheme.DARK  -> Color(0.96f, 0.96f, 0.94f)
-        // NIGHT — tuned to ≥ 4.5:1 against surface=(0.04,0.02,0.02). Previous
-        // (0.79,0.56,0.56) was ~3.1:1 and effectively unreadable at 3 a.m.
-        SWScheme.NIGHT -> Color(1.00f, 0.75f, 0.75f)
+        SWScheme.DAY   -> Color(0xFF0A1428)
+        SWScheme.DARK  -> Color(0xFFECF2F8) // moonlit silver
+        SWScheme.NIGHT -> Color(1.00f, 0.75f, 0.75f) // >= 4.5:1 — DO NOT CHANGE
     }
 
     fun textSecondary(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.373f, 0.392f, 0.439f)
-        SWScheme.DARK  -> Color(0.74f, 0.75f, 0.78f)
+        SWScheme.DAY   -> Color(0xFF4A5573)
+        SWScheme.DARK  -> Color(0xFF8A93A8)
         SWScheme.NIGHT -> Color(0.85f, 0.55f, 0.55f)
     }
 
     fun textTertiary(s: SWScheme): Color = when (s) {
-        SWScheme.DAY   -> Color(0.612f, 0.639f, 0.686f)
-        SWScheme.DARK  -> Color(0.56f, 0.57f, 0.60f)
+        SWScheme.DAY   -> Color(0xFF7A859C)
+        SWScheme.DARK  -> Color(0xFF5C667A)
         SWScheme.NIGHT -> Color(0.70f, 0.42f, 0.42f)
     }
 
     fun textInverse(s: SWScheme): Color = when (s) {
         SWScheme.DAY   -> Color.White
-        SWScheme.DARK  -> Color(0.10f, 0.11f, 0.14f)
+        SWScheme.DARK  -> Color(0xFF0F1A2D)
         SWScheme.NIGHT -> Color(0.10f, 0.04f, 0.04f)
     }
 
