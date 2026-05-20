@@ -41,6 +41,13 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.tween
+import com.lizhi1026.sleepwhisper.core.visualkit.HeroBackdropController
+import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
 
 /**
  * Central state coordinator — port of iOS App/SleepWhisperApp.swift `AppState`.
@@ -113,6 +120,49 @@ class AppStateContainer @Inject constructor(
         context.getSharedPreferences("sw.hint", Context.MODE_PRIVATE)
     private var lastWakeWindowComputedAtMs: Long = 0
     private val wakeWindowThrottleMs: Long = 30_000
+
+    // ─── Hero morph state (Phase 1) ──────────────────────────────────────────
+
+    /**
+     * Sleep CTA → Sleeping screen morph progress, 0..1.
+     * Held in AppStateContainer (singleton) so it survives configuration changes
+     * and so both Home and Sleeping screens can read it to stage their own
+     * secondary animations (content stagger fade, star density ramp, etc).
+     */
+    val morphProgress: Animatable<Float, AnimationVector1D> = Animatable(0f, Float.VectorConverter)
+
+    /**
+     * Single source of truth for the app's "ambient color" — drives the
+     * AuroraBackdrop's tint. Phase 1 uses it for the time-of-day evening hint
+     * on Home; Phase 3 will use it for audio-preset auras from Player.
+     */
+    val heroBackdrop: HeroBackdropController = HeroBackdropController()
+
+    /** Drive the forward morph (Home → Sleeping). Suspends ~heroMorphMs. */
+    suspend fun beginSleepMorph() {
+        morphProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(SWMotion.heroMorphMs, easing = LinearEasing)
+        )
+    }
+
+    /** Drive the reverse morph (Sleeping → Home). Suspends ~heroMorphMs. */
+    suspend fun endSleepMorph() {
+        morphProgress.animateTo(
+            targetValue = 0f,
+            animationSpec = tween(SWMotion.heroMorphMs, easing = LinearEasing)
+        )
+    }
+
+    /**
+     * Snap morphProgress to the value that matches the current rootKey. Call
+     * this from Lifecycle.onResume so re-entering the app after a background
+     * doesn't replay a half-finished morph.
+     */
+    fun snapMorphToCurrent() {
+        val target = if (rootKey.value == "sleeping") 1f else 0f
+        scope.launch { morphProgress.snapTo(target) }
+    }
 
     init {
         _hasSeenOnboardingHints.value = hintPrefs.getBoolean(KEY_HINT_SEEN, false)
