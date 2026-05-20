@@ -35,8 +35,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
@@ -46,6 +48,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalHeroBackdropController
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
+import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
 import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
@@ -194,16 +197,11 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
     GlassCard(
         modifier = Modifier.fillMaxWidth().floatingY(),
         contentPadding = PaddingValues(SWSpacing.xl),
-        elevation = ElevationLevel.HERO
+        elevation = ElevationLevel.HERO,
+        hero = true
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
-            BasicText(
-                text = stringResource(R.string.home_wakewindow_title).uppercase(),
-                style = SWFont.labelMD().copy(
-                    color = SWColor.textSecondary(scheme),
-                    letterSpacing = 1.4.sp
-                )
-            )
+            SectionLabel(stringResource(R.string.home_wakewindow_title))
             Row(verticalAlignment = Alignment.Bottom) {
                 RollingNumber(
                     value = remaining,
@@ -219,7 +217,6 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
-            // progress bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,7 +230,7 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
                         .fillMaxWidth(frac)
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
-                        .background(com.lizhi1026.sleepwhisper.core.visualkit.SWGradient.accent(scheme))
+                        .background(SWGradient.auroraGlow(scheme))
                 )
             }
         }
