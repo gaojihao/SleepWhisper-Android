@@ -65,6 +65,20 @@ private const val METEOR_TAIL_THICKNESS_DP = 2f
 private const val METEOR_MIN_INTERVAL_MS = 90_000L   // 90s
 private const val METEOR_MAX_INTERVAL_MS = 180_000L  // 180s
 
+private data class CloudWisp(
+    var nx: Float,
+    var ny: Float,
+    val widthDp: Float,        // 30..50
+    val heightDp: Float,       // 10..14
+    var alpha: Float,          // 0..0.02
+    val velocityDpPerSec: Float = 0.1f,
+    var lifetimeMs: Long       // age in ms; respawn when > MAX_LIFETIME
+)
+
+private const val WISP_COUNT = 2
+private const val WISP_MAX_LIFETIME_MS = 120_000L
+private const val WISP_FADE_EDGE_MS = 8_000L
+
 // Canvas frame interval. 33ms ≈ 30fps. Higher than the master spec's "10fps for
 // twinkles" target because the same animation loop drives meteor and drifting-star
 // rendering in subsequent tasks, both of which need 30fps to look smooth. Stars
@@ -196,6 +210,63 @@ fun NightSkyCanvas(
         }
     }
 
+    // Layer 5 — atmospheric cloud wisps. Visible 22:00-03:59 only. Disabled on
+    // reduce-motion and low-RAM devices.
+    val currentHour = remember(palette) {
+        timeProvider().hour
+    }
+    val wispsVisible = currentHour in 22..23 || currentHour in 0..3
+    val wisps = remember {
+        val r = Random(0xC10D55L)
+        mutableListOf<CloudWisp>().apply {
+            repeat(WISP_COUNT) {
+                add(CloudWisp(
+                    nx = r.nextFloat(),
+                    ny = 0.2f + r.nextFloat() * 0.6f,
+                    widthDp = 30f + r.nextFloat() * 20f,
+                    heightDp = 10f + r.nextFloat() * 4f,
+                    alpha = 0f,
+                    lifetimeMs = r.nextLong(0, WISP_MAX_LIFETIME_MS)
+                ))
+            }
+        }
+    }
+    if (!reduce && !isLowRam && wispsVisible) {
+        LaunchedEffect(wispsVisible) {
+            var lastFrameMs = 0L
+            while (true) {
+                withInfiniteAnimationFrameMillis { frameMs ->
+                    if (lastFrameMs == 0L) {
+                        lastFrameMs = frameMs
+                        return@withInfiniteAnimationFrameMillis
+                    }
+                    val dt = (frameMs - lastFrameMs).coerceAtMost(100L)
+                    lastFrameMs = frameMs
+                    val dtSec = dt / 1000f
+                    wisps.forEachIndexed { i, w ->
+                        w.lifetimeMs += dt
+                        w.nx += w.velocityDpPerSec / 360f * dtSec
+                        val targetAlpha = when {
+                            w.lifetimeMs < WISP_FADE_EDGE_MS ->
+                                0.02f * (w.lifetimeMs.toFloat() / WISP_FADE_EDGE_MS)
+                            w.lifetimeMs > WISP_MAX_LIFETIME_MS - WISP_FADE_EDGE_MS ->
+                                0.02f * ((WISP_MAX_LIFETIME_MS - w.lifetimeMs).toFloat() / WISP_FADE_EDGE_MS).coerceAtLeast(0f)
+                            else -> 0.02f
+                        }
+                        w.alpha = targetAlpha
+                        if (w.lifetimeMs >= WISP_MAX_LIFETIME_MS) {
+                            wisps[i] = w.copy(
+                                nx = -0.1f,
+                                ny = 0.2f + Random.nextFloat() * 0.6f,
+                                lifetimeMs = 0L
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     Canvas(
         modifier = modifier
             .alpha(morphProgress.coerceIn(0f, 1f))
@@ -269,6 +340,26 @@ fun NightSkyCanvas(
                     radius = METEOR_HEAD_DP.dp.toPx() / 2f,
                     center = Offset(headX * size.width, headY * size.height)
                 )
+            }
+        }
+        // Layer 5 — cloud wisps (drawn as faint blurred ellipses via filled ovals)
+        if (wispsVisible) {
+            // Touch twinkleClockMs to recompose on each frame so wisp drift renders smoothly
+            @Suppress("UNUSED_EXPRESSION") twinkleClockMs
+            wisps.forEach { w ->
+                if (w.alpha > 0f) {
+                    drawOval(
+                        color = Color.White.copy(alpha = w.alpha),
+                        topLeft = Offset(
+                            x = w.nx * size.width - w.widthDp.dp.toPx() / 2f,
+                            y = w.ny * size.height - w.heightDp.dp.toPx() / 2f
+                        ),
+                        size = androidx.compose.ui.geometry.Size(
+                            w.widthDp.dp.toPx(),
+                            w.heightDp.dp.toPx()
+                        )
+                    )
+                }
             }
         }
     }
