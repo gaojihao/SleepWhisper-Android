@@ -41,7 +41,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
-import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SWSegmentedPicker
@@ -67,7 +67,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        BreathingBackground()
+        AuroraBackdrop()
         Column(
             modifier = Modifier
                 .fillMaxSize()

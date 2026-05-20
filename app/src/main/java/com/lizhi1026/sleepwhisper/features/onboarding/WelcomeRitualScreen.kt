@@ -44,7 +44,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
-import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.Starfield
 import com.lizhi1026.sleepwhisper.model.Baby
 import kotlinx.coroutines.delay
@@ -101,7 +101,7 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
                 onClick = { if (stage >= 3) finishOnce() }
             )
     ) {
-        BreathingBackground()
+        AuroraBackdrop()
         Starfield(modifier = Modifier.fillMaxSize(), density = 60)
         Column(
             modifier = Modifier

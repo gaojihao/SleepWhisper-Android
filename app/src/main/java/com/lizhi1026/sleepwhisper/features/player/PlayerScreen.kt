@@ -44,7 +44,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
-import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.model.AudioPreset
@@ -65,7 +65,7 @@ fun PlayerScreen(vm: PlayerViewModel = hiltViewModel()) {
     val rest = vm.allPresets - rec.toSet()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        BreathingBackground()
+        AuroraBackdrop()
         Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 DragHandle()

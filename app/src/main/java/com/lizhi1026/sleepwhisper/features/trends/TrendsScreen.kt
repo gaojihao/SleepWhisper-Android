@@ -33,7 +33,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.floatingY
-import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.EmptyStateCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
@@ -50,7 +50,7 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
     val baby by vm.app.baby.observeAsState(null)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        BreathingBackground()
+        AuroraBackdrop()
         Column(
             modifier = Modifier
                 .fillMaxSize()

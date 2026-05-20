@@ -38,7 +38,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
-import com.lizhi1026.sleepwhisper.core.visualkit.components.BreathingBackground
+import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SWSegmentedPicker
@@ -64,7 +64,7 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        BreathingBackground()
+        AuroraBackdrop()
         Starfield(modifier = Modifier.fillMaxSize(), density = if (scheme == SWScheme.DAY) 30 else 70)
 
         Column(
