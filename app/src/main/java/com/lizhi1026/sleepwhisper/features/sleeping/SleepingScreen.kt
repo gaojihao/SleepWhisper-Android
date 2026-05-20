@@ -61,7 +61,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.LiquidProgressRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
-import com.lizhi1026.sleepwhisper.core.visualkit.components.Starfield
+import com.lizhi1026.sleepwhisper.core.visualkit.components.NightSkyCanvas
 import com.lizhi1026.sleepwhisper.core.visualkit.components.sleepHeroDestination
 import com.lizhi1026.sleepwhisper.model.AudioPreset
 import kotlinx.coroutines.delay
@@ -106,8 +106,10 @@ fun SleepingScreen(
             // Star density ramps with morph progress on entry. After the morph settles
             // (morphProgress = 1), density stays at the full 80. Phase 2 replaces this
             // with NightSkyCanvas.
-            val density = (morphProgress * 80f).toInt().coerceAtLeast(0).coerceAtMost(80)
-            Starfield(modifier = Modifier.fillMaxSize(), density = density)
+            NightSkyCanvas(
+                modifier = Modifier.fillMaxSize(),
+                morphProgress = morphProgress
+            )
 
             // Invisible 600dp halo placeholder — anchors the shared element to its
             // destination position so the Sleep CTA's morph has somewhere to fly to.
@@ -205,10 +207,11 @@ private fun CountdownSection(elapsedSec: Long) {
     val m = ((elapsedSec % 3600) / 60).toInt()
     val s = (elapsedSec % 60).toInt()
     val displayText = if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    val moonlitSilver = Color(0xFFECF2F8)
     val style = if (h > 0)
-        SWFont.displayLargeTabular().copy(color = Color.White)   // 72pt
+        SWFont.displayLGTabular().copy(color = moonlitSilver)   // 64sp (fits in 280dp ring)
     else
-        SWFont.displayXLTabular().copy(color = Color.White)      // 96pt
+        SWFont.displayXLTabular().copy(color = moonlitSilver)   // 96sp (only used briefly for MM:SS)
     BasicText(
         text = displayText,
         style = style,
@@ -301,7 +304,7 @@ private fun WakeButton(onWake: () -> Unit) {
             modifier = Modifier
                 .size(112.dp)
                 .clip(CircleShape)
-                .background(SWGradient.accent(scheme)),
+                .background(SWGradient.auroraGlow(scheme)),
             contentAlignment = Alignment.Center
         ) {
             BasicText(
