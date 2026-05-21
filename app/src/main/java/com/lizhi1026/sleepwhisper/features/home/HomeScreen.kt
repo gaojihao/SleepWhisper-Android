@@ -50,6 +50,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.sleepHeroOrigin
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
+import com.lizhi1026.sleepwhisper.features.player.syncToPlayer
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
 import com.lizhi1026.sleepwhisper.core.strings.greetingForHour
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
@@ -107,11 +108,12 @@ fun HomeScreen(
     }
 
     val heroBackdrop = LocalHeroBackdropController.current
-    LaunchedEffect(hour) {
-        // Evening (19:00–05:59) — tint backdrop dusk-orange whisper. Otherwise clear.
-        heroBackdrop.setAmbient(
-            if (hour >= 19 || hour < 6) Color(0xFFFFB088) else null
-        )
+    LaunchedEffect(hour, currentPreset) {
+        // Priority: active preset's mid color > evening time-of-day hint > null.
+        // When a preset is playing, its aura wins; when it stops, the time-of-day
+        // hint takes over again automatically.
+        val eveningHint = if (hour >= 19 || hour < 6) Color(0xFFFFB088) else null
+        heroBackdrop.syncToPlayer(currentPreset = currentPreset, fallback = eveningHint)
     }
 
     var showBottleSheet by remember { mutableStateOf(false) }
