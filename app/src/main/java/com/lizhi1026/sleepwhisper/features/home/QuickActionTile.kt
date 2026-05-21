@@ -103,27 +103,27 @@ fun QuickActionTile(
                     onTap = { onTap() }
                 )
             },
-        contentPadding = PaddingValues(SWSpacing.sm),
+        contentPadding = PaddingValues(SWSpacing.xs),
         elevation = ElevationLevel.SOFT
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)
+            verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(tintBg)
-                    .innerHighlight(cornerRadius = 20.dp),
+                    .innerHighlight(cornerRadius = 18.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(iconTint),
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
             BasicText(

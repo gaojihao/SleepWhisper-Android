@@ -74,6 +74,7 @@
     <string name="onboarding_cta">Begin the journey</string>
     <string name="onboarding_dob_hint">(determines AI recommendation accuracy)</string>
     <string name="onboarding_dob_label">Date of birth</string>
+    <string name="onboarding_gender_label">Baby gender</string>
     <string name="onboarding_gender_female">Girl</string>
     <string name="onboarding_gender_male">Boy</string>
     <string name="onboarding_gender_unknown">Prefer not to say</string>

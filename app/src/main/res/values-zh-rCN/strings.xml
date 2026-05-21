@@ -52,7 +52,7 @@
     <string name="hint_startsleep_title">长按「哄睡时刻」开始</string>
     <string name="hint_window_body">根据宝宝月龄推算最佳哄睡时刻，\n窗口越接近，按钮越温暖。</string>
     <string name="hint_window_title">清醒窗口实时倒计时</string>
-    <string name="home_daycount">的第 %1$d 天</string>
+    <string name="home_daycount">的第%1$d天</string>
     <string name="home_greeting_afternoon">午后柔光</string>
     <string name="home_greeting_evening">夜幕将至</string>
     <string name="home_greeting_morning">晨光初醒</string>
@@ -77,6 +77,7 @@
     <string name="onboarding_gender_female">女宝</string>
     <string name="onboarding_gender_male">男宝</string>
     <string name="onboarding_gender_unknown">未知</string>
+    <string name="onboarding_gender_label">宝宝性别</string>
     <string name="onboarding_tagline">守护宝宝的每一次入梦</string>
     <string name="onboarding_title">SleepWhisper</string>
     <string name="paywall_benefit_ai_sub">学习宝宝节奏，提前预测最佳哄睡窗口</string>
