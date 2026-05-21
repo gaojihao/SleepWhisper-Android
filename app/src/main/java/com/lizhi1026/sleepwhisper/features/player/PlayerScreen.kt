@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
+import com.lizhi1026.sleepwhisper.core.visualkit.LocalHeroBackdropController
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
@@ -45,8 +47,11 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
+import com.lizhi1026.sleepwhisper.core.visualkit.components.ChevronTrail
 import com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
+import com.lizhi1026.sleepwhisper.core.visualkit.components.PresetAuraOrb
+import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel as SharedSectionLabel
 import com.lizhi1026.sleepwhisper.model.AudioPreset
 
 @Composable
@@ -66,6 +71,11 @@ fun PlayerScreen(
     val ageMonths = remember(baby) { baby?.ageInMonths() ?: 0 }
     val rec = vm.recommended(ageMonths)
     val rest = vm.allPresets - rec.toSet()
+
+    val heroBackdrop = LocalHeroBackdropController.current
+    val ambient by remember(heroBackdrop) {
+        derivedStateOf { heroBackdrop.ambient }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (!embedded) {
@@ -93,18 +103,18 @@ fun PlayerScreen(
 
                 if (rec.isNotEmpty()) {
                     item {
-                        SectionLabel(stringResource(R.string.player_section_recommended, ageMonths))
+                        SharedSectionLabel(stringResource(R.string.player_section_recommended, ageMonths))
                     }
                     items(rec, key = { it.id }) { p ->
-                        PresetRow(p, currentId == p.id) { onTap(p, minutesNow, vm) }
+                        PresetRow(p, currentId == p.id, ambient) { onTap(p, minutesNow, vm) }
                     }
                 }
 
                 item {
-                    SectionLabel(stringResource(R.string.player_section_all))
+                    SharedSectionLabel(stringResource(R.string.player_section_all))
                 }
                 items(rest, key = { it.id }) { p ->
-                    PresetRow(p, currentId == p.id) { onTap(p, minutesNow, vm) }
+                    PresetRow(p, currentId == p.id, ambient) { onTap(p, minutesNow, vm) }
                 }
             }
         }
@@ -127,18 +137,6 @@ private fun Header(ageMonths: Int, babyName: String?) {
             )
         )
     }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    val scheme = LocalSWScheme.current
-    BasicText(
-        text = text,
-        style = SWFont.labelMD().copy(
-            color = SWColor.textSecondary(scheme),
-            letterSpacing = 1.2.sp
-        )
-    )
 }
 
 @Composable
@@ -186,7 +184,7 @@ private fun DurationChip(
         modifier = modifier
             .clip(RoundedCornerShape(SWRadius.pill))
             .background(
-                if (active) SWGradient.primary(scheme)
+                if (active) SWGradient.auroraGlow(scheme)
                 else androidx.compose.ui.graphics.Brush.linearGradient(
                     listOf(
                         Color.White.copy(alpha = if (scheme == SWScheme.DAY) 0.4f else 0.05f),
@@ -214,33 +212,29 @@ private fun DurationChip(
 }
 
 @Composable
-private fun PresetRow(preset: AudioPreset, isPlaying: Boolean, onTap: () -> Unit) {
+private fun PresetRow(
+    preset: AudioPreset,
+    isPlaying: Boolean,
+    ambient: Color?,
+    onTap: () -> Unit
+) {
     val scheme = LocalSWScheme.current
+    val tint = if (!isPlaying && ambient != null) {
+        lerp(SWColor.surfaceElevated(scheme), ambient, 0.12f)
+    } else null
+
     GlassCard(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onTap),
         cornerRadius = 18.dp,
-        contentPadding = PaddingValues(SWSpacing.md)
+        contentPadding = PaddingValues(SWSpacing.md),
+        surfaceTintOverride = tint
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SWSpacing.md)) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(if (isPlaying) SWGradient.accent(scheme) else SWGradient.primary(scheme)),
-                contentAlignment = Alignment.Center
-            ) {
-                val iconId = androidx.compose.ui.platform.LocalContext.current.resources
-                    .getIdentifier(preset.iconName, "drawable",
-                        androidx.compose.ui.platform.LocalContext.current.packageName)
-                if (iconId != 0) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(id = iconId),
-                        contentDescription = null,
-                        colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
+            PresetAuraOrb(
+                aura = preset.auraColors,
+                isActive = isPlaying,
+                sizeDp = 48.dp
+            )
             Column(modifier = Modifier.weight(1f)) {
                 BasicText(
                     text = stringResource(audioPresetNameKey(preset.nameKey)),
@@ -261,14 +255,11 @@ private fun PresetRow(preset: AudioPreset, isPlaying: Boolean, onTap: () -> Unit
                         .width(36.dp)
                         .height(22.dp),
                     isPlaying = true,
-                    color = SWColor.accent(scheme),
+                    color = preset.auraColors.top,
                     barCount = 8
                 )
             } else {
-                BasicText(
-                    text = "›",
-                    style = SWFont.titleLG().copy(color = SWColor.textSecondary(scheme))
-                )
+                ChevronTrail()
             }
         }
     }
