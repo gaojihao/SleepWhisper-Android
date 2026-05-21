@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,12 +30,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.app.AppStateContainer
@@ -42,10 +42,11 @@ import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
-import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
-import com.lizhi1026.sleepwhisper.core.visualkit.components.Starfield
+import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
+import com.lizhi1026.sleepwhisper.core.visualkit.components.NightSkyCanvas
+import com.lizhi1026.sleepwhisper.core.visualkit.components.innerHighlight
 import com.lizhi1026.sleepwhisper.model.Baby
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -88,9 +89,7 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
         finishOnce()
     }
 
-    val isPurpleHero = scheme == SWScheme.DAY
-    val ringStrokeColor = if (isPurpleHero) Color(0.45f, 0.36f, 0.85f) else SWColor.accent(scheme)
-    val heroSolidColor = if (isPurpleHero) SWColor.softLilac(scheme) else SWColor.accent(scheme)
+    val ringStrokeColor = SWColor.accentSecondary(scheme)
 
     Box(
         modifier = Modifier
@@ -102,7 +101,7 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
             )
     ) {
         AuroraBackdrop()
-        Starfield(modifier = Modifier.fillMaxSize(), density = 60)
+        NightSkyCanvas(modifier = Modifier.fillMaxSize(), morphProgress = 1f)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -124,11 +123,13 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
                             shape = CircleShape
                         )
                 )
-                // hero solid circle (always rendered)
+                // hero solid circle (always rendered) — Aurora-glow gradient with inner highlight
                 Box(
                     modifier = Modifier
                         .size(88.dp)
-                        .background(heroSolidColor, CircleShape)
+                        .clip(CircleShape)
+                        .background(SWGradient.auroraGlow(scheme))
+                        .innerHighlight(cornerRadius = 44.dp)
                 )
             }
 
@@ -137,19 +138,21 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     BasicText(
                         text = stringResource(R.string.welcome_greeting),
-                        style = SWFont.serifItalic(17).copy(
+                        style = SWFont.serifItalic(22).copy(
                             color = SWColor.textPrimary(scheme).copy(alpha = 0.85f)
                         )
                     )
                     Spacer(Modifier.height(SWSpacing.xs))
                     BasicText(
                         text = baby?.name ?: "",
-                        style = androidx.compose.ui.text.TextStyle(
-                            fontSize = 44.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = SWColor.primary(scheme)
-                        )
+                        style = SWFont.cjkAware(
+                            SWFont.displayXL().copy(color = SWColor.textPrimary(scheme))
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Visible
                     )
+                    Spacer(Modifier.height(SWSpacing.xs))
+                    Hairline(modifier = Modifier.width(60.dp))
                 }
             }
 
