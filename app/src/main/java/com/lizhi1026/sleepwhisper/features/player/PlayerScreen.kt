@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -46,6 +47,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWRadius
 import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AudioWaveform
+import com.lizhi1026.sleepwhisper.core.visualkit.components.AuraParticles
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ChevronTrail
 import com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle
@@ -76,6 +78,14 @@ fun PlayerScreen(
     val heroBackdrop = LocalHeroBackdropController.current
     val ambient by remember(heroBackdrop) {
         derivedStateOf { heroBackdrop.ambient }
+    }
+
+    // Push the active preset's mid color to the backdrop. Persists across screens
+    // until playback stops (current → null), at which point Home's LaunchedEffect
+    // restores its time-of-day fallback. Works in both standalone tab and embedded
+    // mini-sheet (Phase 2 Sleeping integration) modes.
+    LaunchedEffect(current, embedded) {
+        heroBackdrop.syncToPlayer(currentPreset = current, fallback = null)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -118,6 +128,15 @@ fun PlayerScreen(
                     PresetRow(p, currentId == p.id, ambient) { onTap(p, minutesNow, vm) }
                 }
             }
+        }
+        // Aura particles overlay — visible only when a preset is active. Drawn on
+        // top of the LazyColumn but transparent to pointer input (clearAndSetSemantics
+        // inside AuraParticles disables any focus claim) so taps pass through.
+        current?.let { activePreset ->
+            AuraParticles(
+                tint = activePreset.auraColors.top,
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }
