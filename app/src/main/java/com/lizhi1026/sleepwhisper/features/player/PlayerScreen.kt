@@ -51,6 +51,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.ChevronTrail
 import com.lizhi1026.sleepwhisper.core.visualkit.components.DragHandle
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PresetAuraOrb
+import com.lizhi1026.sleepwhisper.core.visualkit.components.innerHighlight
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel as SharedSectionLabel
 import com.lizhi1026.sleepwhisper.model.AudioPreset
 
