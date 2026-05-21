@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +39,8 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.EmptyStateCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
+import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
+import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel
 
 @Composable
 fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
@@ -89,11 +93,12 @@ fun TrendsScreen(vm: TrendsViewModel = hiltViewModel()) {
 @Composable
 private fun Header(babyName: String?) {
     val scheme = LocalSWScheme.current
-    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
         BasicText(
             text = stringResource(R.string.trends_title),
             style = SWFont.serifItalic(28).copy(color = SWColor.textPrimary(scheme))
         )
+        Hairline(modifier = Modifier.width(60.dp).padding(top = SWSpacing.xs))
         BasicText(
             text = stringResource(R.string.trends_subtitle, babyName ?: "").uppercase(),
             style = SWFont.labelMD().copy(
@@ -117,10 +122,7 @@ private fun TodayCard(
         elevation = ElevationLevel.MEDIUM
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
-            BasicText(
-                text = stringResource(R.string.trends_today),
-                style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-            )
+            SectionLabel(stringResource(R.string.trends_today))
             TodayTimeline(sleeps = sleeps, feedings = feedings)
         }
     }
@@ -144,15 +146,13 @@ private fun WeeklyCard(buckets: List<Pair<String, Long>>) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                BasicText(
-                    text = stringResource(R.string.trends_week_title),
-                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
-                )
+                SectionLabel(stringResource(R.string.trends_week_title))
                 BasicText(
                     text = stringResource(R.string.trends_week_avg, avgHoursFormatted),
-                    style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme))
+                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
                 )
             }
+            Hairline()
             WeeklyBars(buckets)
         }
     }
@@ -175,13 +175,12 @@ private fun WeeklyBars(buckets: List<Pair<String, Long>>) {
                 verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)
             ) {
                 Box(modifier = Modifier.height(180.dp), contentAlignment = Alignment.BottomCenter) {
-                    val barH = (secs.toFloat() / maxSec) * 180f
+                    val brush = chartBarBrush(isHighlighted = isToday)
                     Canvas(modifier = Modifier.width(22.dp).height(180.dp)) {
                         val h = (secs.toFloat() / maxSec) * size.height
                         val capsuleH = h.coerceAtLeast(8.dp.toPx())
                         drawRoundRect(
-                            color = if (isToday) SWColor.accent(scheme)
-                                    else SWColor.primary(scheme).copy(alpha = 0.7f),
+                            brush = brush,
                             topLeft = Offset(0f, size.height - capsuleH),
                             size = Size(size.width, capsuleH),
                             cornerRadius = CornerRadius(size.width / 2f)
@@ -194,5 +193,26 @@ private fun WeeklyBars(buckets: List<Pair<String, Long>>) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Vertical gradient brush for the WeeklyBars chart. Today's column uses a
+ * dual-color aurora gradient that visually pops; non-today columns use accent
+ * at 70% alpha for a quieter row that doesn't compete.
+ */
+@Composable
+private fun chartBarBrush(isHighlighted: Boolean): Brush {
+    val scheme = LocalSWScheme.current
+    return if (isHighlighted) {
+        Brush.verticalGradient(
+            colors = listOf(
+                SWColor.accent(scheme),
+                SWColor.accentSecondary(scheme)
+            )
+        )
+    } else {
+        val base = SWColor.accent(scheme).copy(alpha = 0.7f)
+        Brush.verticalGradient(colors = listOf(base, base))
     }
 }
