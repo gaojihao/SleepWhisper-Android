@@ -51,6 +51,7 @@ fun GlassCard(
     contentPadding: PaddingValues = PaddingValues(SWSpacing.md),
     elevation: ElevationLevel = ElevationLevel.SOFT,
     hero: Boolean = false,
+    surfaceTintOverride: Color? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val scheme = LocalSWScheme.current
@@ -94,7 +95,7 @@ fun GlassCard(
             .shadow(close.radius, shape, clip = false, ambientColor = close.color, spotColor = close.color)
             .shadow(distant.radius, shape, clip = false, ambientColor = distant.color, spotColor = distant.color)
             .clip(shape)
-            .background(SWColor.surfaceElevated(scheme))
+            .background(surfaceTintOverride ?: SWColor.surfaceElevated(scheme))
             .then(borderMod)
     ) {
         if (scheme != SWScheme.DAY) {
