@@ -41,6 +41,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lizhi1026.sleepwhisper.core.visualkit.SWMotion
@@ -126,27 +127,14 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = SWSpacing.lg)
-                .padding(top = SWSpacing.xs),
-            verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)
+                .padding(top = SWSpacing.xxs),
+            verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)
         ) {
             GreetingSection(babyName = baby?.name, dobMs = baby?.dateOfBirth, hour = hour)
-
-            if (!hasSeenHints) {
-                OnboardingHintsCard(onDismiss = vm::onDismissHints)
-            }
 
             wakeWindow?.let { (remaining, total) ->
                 WakeWindowCard(remaining = remaining, total = total)
             }
-
-            NowPlayingCard(
-                presetIconName = currentPreset?.iconName,
-                presetName = currentPreset?.let { stringResource(audioPresetNameKey(it.nameKey)) },
-                isPlaying = playerState is PlayerState.Playing,
-                onClick = onOpenPlayer
-            )
-
-            QuickActionsGrid(vm, onBottleTap = { showBottleSheet = true })
 
             val morphScope = rememberCoroutineScope()
             val morphProgress by remember(vm.app.morphProgress) {
@@ -165,7 +153,20 @@ fun HomeScreen(
                 onLongPress = { showSleepTypePicker = true }
             )
 
-            Spacer(Modifier.height(SWSpacing.huge))
+            if (!hasSeenHints) {
+                OnboardingHintsCard(onDismiss = vm::onDismissHints)
+            }
+
+            NowPlayingCard(
+                presetIconName = currentPreset?.iconName,
+                presetName = currentPreset?.let { stringResource(audioPresetNameKey(it.nameKey)) },
+                isPlaying = playerState is PlayerState.Playing,
+                onClick = onOpenPlayer
+            )
+
+            QuickActionsGrid(vm, onBottleTap = { showBottleSheet = true })
+
+            Spacer(Modifier.height(SWSpacing.lg))
         }
 
         if (showBottleSheet) {
@@ -199,25 +200,34 @@ private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
             ChronoUnit.DAYS.between(birth, today).toInt().coerceAtLeast(0)
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
+    Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
         BasicText(
             text = stringResource(greetingForHour(hour)),
             style = SWFont.serifItalic(22).copy(color = SWColor.textSecondary(scheme))
         )
-        babyName?.let {
-            BasicText(
-                text = it,
-                style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme))
-            )
+        if (!babyName.isNullOrBlank() || daysOld != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                babyName?.takeIf { it.isNotBlank() }?.let {
+                    BasicText(
+                        text = it,
+                        modifier = if (daysOld != null) Modifier.weight(1f, fill = false) else Modifier,
+                        style = SWFont.titleXL().copy(color = SWColor.textPrimary(scheme)),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                daysOld?.let {
+                    BasicText(
+                        text = stringResource(R.string.home_daycount, it),
+                        style = SWFont.titleMD().copy(color = SWColor.textTertiary(scheme)),
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip
+                    )
+                }
+            }
         }
         // Short hairline flourish — reads as a book-chapter rule, not a divider.
-        Hairline(modifier = Modifier.width(60.dp).padding(top = SWSpacing.xs))
-        daysOld?.let {
-            BasicText(
-                text = stringResource(R.string.home_daycount, it).uppercase(),
-                style = SWFont.labelMD().copy(color = SWColor.textTertiary(scheme))
-            )
-        }
+        Hairline(modifier = Modifier.width(52.dp).padding(top = SWSpacing.xxs))
     }
 }
 
@@ -231,40 +241,44 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
     }
     GlassCard(
         modifier = Modifier.fillMaxWidth().floatingY(),
-        contentPadding = PaddingValues(SWSpacing.xl),
+        contentPadding = PaddingValues(horizontal = SWSpacing.lg, vertical = SWSpacing.md),
         elevation = ElevationLevel.HERO,
         hero = true
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+        Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
             SectionLabel(stringResource(R.string.home_wakewindow_title))
             Row(verticalAlignment = Alignment.Bottom) {
                 RollingNumber(
                     value = remaining,
-                    style = SWFont.displayLGTabular().copy(color = color)
+                    style = SWFont.displayLGTabular().copy(
+                        color = color,
+                        fontSize = 52.sp,
+                        lineHeight = 52.sp
+                    )
                 )
                 Spacer(Modifier.width(SWSpacing.xs))
                 BasicText(
                     text = stringResource(R.string.home_wakewindow_unit),
                     style = androidx.compose.ui.text.TextStyle(
-                        fontSize = 28.sp,
+                        fontSize = 22.sp,
                         color = SWColor.textSecondary(scheme)
                     ),
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(2.5f.dp))
                     .background(SWColor.border(scheme).copy(alpha = 0.3f))
             ) {
                 val frac = (remaining.toFloat() / total.coerceAtLeast(1)).coerceIn(0f, 1f)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(frac)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(2.5f.dp))
                         .background(SWGradient.auroraGlow(scheme))
                 )
             }
@@ -392,12 +406,12 @@ private fun SleepCTA(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = SWSpacing.huge),
+            .padding(top = SWSpacing.xs),
         contentAlignment = Alignment.Center
     ) {
         PulseRing(
             color = SWColor.accent(scheme),
-            radius = 140.dp,
+            radius = 64.dp,
             intensity = PulseIntensity.STRONG
         )
         Box(
