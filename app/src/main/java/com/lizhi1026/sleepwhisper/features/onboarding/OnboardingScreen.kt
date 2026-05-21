@@ -40,12 +40,15 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWScheme
 import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
+import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
+import com.lizhi1026.sleepwhisper.core.visualkit.components.NightSkyCanvas
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SWSegmentedPicker
+import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SegmentedOption
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButtonStyle
-import com.lizhi1026.sleepwhisper.core.visualkit.components.Starfield
+import com.lizhi1026.sleepwhisper.core.visualkit.components.innerHighlight
 import com.lizhi1026.sleepwhisper.model.Baby
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -65,7 +68,7 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         AuroraBackdrop()
-        Starfield(modifier = Modifier.fillMaxSize(), density = if (scheme == SWScheme.DAY) 30 else 70)
+        NightSkyCanvas(modifier = Modifier.fillMaxSize(), morphProgress = 1f)
 
         Column(
             modifier = Modifier
@@ -92,7 +95,8 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
                     modifier = Modifier
                         .size(88.dp)
                         .clip(CircleShape)
-                        .background(SWGradient.accent(scheme))
+                        .background(SWGradient.auroraGlow(scheme))
+                        .innerHighlight(cornerRadius = 44.dp)
                 )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -133,7 +137,7 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
                             }
                         )
                     }
-                    Divider()
+                    Hairline()
                     Field(label = stringResource(R.string.onboarding_dob_label)) {
                         val display = dob?.let { dateFormat.format(Date(it)) }
                             ?: stringResource(R.string.onboarding_dob_hint)
@@ -168,7 +172,7 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
                             style = SoftButtonStyle.GHOST
                         )
                     }
-                    Divider()
+                    Hairline()
                     Field(label = stringResource(R.string.onboarding_gender_unknown)) {
                         SWSegmentedPicker(
                             options = listOf(
@@ -198,28 +202,8 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
 
 @Composable
 private fun Field(label: String, content: @Composable () -> Unit) {
-    val scheme = LocalSWScheme.current
     Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
-        BasicText(
-            text = label.uppercase(),
-            style = SWFont.labelMD().copy(
-                color = SWColor.textSecondary(scheme),
-                letterSpacing = 1.4.sp()
-            )
-        )
+        SectionLabel(label)
         content()
     }
 }
-
-@Composable
-private fun Divider() {
-    val scheme = LocalSWScheme.current
-    Box(
-        modifier = Modifier
-            .height(1.dp)
-            .background(SWColor.border(scheme).copy(alpha = 0.2f))
-    )
-}
-
-private fun Double.sp(): androidx.compose.ui.unit.TextUnit =
-    androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp)
