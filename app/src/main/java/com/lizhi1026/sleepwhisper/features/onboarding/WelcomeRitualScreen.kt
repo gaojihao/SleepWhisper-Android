@@ -138,7 +138,7 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     BasicText(
                         text = stringResource(R.string.welcome_greeting),
-                        style = SWFont.serifItalic(22).copy(
+                        style = SWFont.serif(22).copy(
                             color = SWColor.textPrimary(scheme).copy(alpha = 0.85f)
                         )
                     )

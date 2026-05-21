@@ -80,7 +80,7 @@ fun BottleAmountSheet(
                 )
                 BasicText(
                     text = stringResource(R.string.bottle_title),
-                    style = SWFont.serifItalic(22).copy(color = SWColor.textSecondary(scheme))
+                    style = SWFont.serif(22).copy(color = SWColor.textSecondary(scheme))
                 )
 
                 Row(verticalAlignment = androidx.compose.ui.Alignment.Bottom) {

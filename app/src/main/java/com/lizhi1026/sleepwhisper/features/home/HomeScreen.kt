@@ -203,7 +203,7 @@ private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
     Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xxs)) {
         BasicText(
             text = stringResource(greetingForHour(hour)),
-            style = SWFont.serifItalic(22).copy(color = SWColor.textSecondary(scheme))
+            style = SWFont.serif(22).copy(color = SWColor.textSecondary(scheme))
         )
         if (!babyName.isNullOrBlank() || daysOld != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {

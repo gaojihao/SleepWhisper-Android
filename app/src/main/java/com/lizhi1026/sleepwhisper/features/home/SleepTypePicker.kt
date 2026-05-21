@@ -70,7 +70,7 @@ fun SleepTypePicker(
                 )
                 BasicText(
                     text = stringResource(R.string.sleeptype_picker_title),
-                    style = com.lizhi1026.sleepwhisper.core.visualkit.SWFont.serifItalic(22).copy(
+                    style = com.lizhi1026.sleepwhisper.core.visualkit.SWFont.serif(22).copy(
                         color = SWColor.textPrimary(scheme)
                     )
                 )

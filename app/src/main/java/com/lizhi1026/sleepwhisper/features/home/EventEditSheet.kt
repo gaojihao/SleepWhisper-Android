@@ -112,7 +112,7 @@ fun EventEditSheet(
                             stringResource(target.event.type.displayKey())
                         )
                     },
-                    style = com.lizhi1026.sleepwhisper.core.visualkit.SWFont.serifItalic(22).copy(
+                    style = com.lizhi1026.sleepwhisper.core.visualkit.SWFont.serif(22).copy(
                         color = SWColor.textPrimary(scheme)
                     )
                 )

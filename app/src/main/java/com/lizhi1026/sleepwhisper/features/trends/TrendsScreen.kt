@@ -96,7 +96,7 @@ private fun Header(babyName: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
         BasicText(
             text = stringResource(R.string.trends_title),
-            style = SWFont.serifItalic(28).copy(color = SWColor.textPrimary(scheme))
+            style = SWFont.serif(28).copy(color = SWColor.textPrimary(scheme))
         )
         Hairline(modifier = Modifier.width(60.dp).padding(top = SWSpacing.xs))
         BasicText(

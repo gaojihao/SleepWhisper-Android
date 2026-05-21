@@ -147,7 +147,7 @@ private fun Header(ageMonths: Int, babyName: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {
         BasicText(
             text = stringResource(R.string.player_header),
-            style = SWFont.serifItalic(22).copy(color = SWColor.textPrimary(scheme))
+            style = SWFont.serif(22).copy(color = SWColor.textPrimary(scheme))
         )
         BasicText(
             text = stringResource(R.string.player_subheader, "$ageMonths").uppercase(),

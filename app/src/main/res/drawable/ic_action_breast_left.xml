@@ -4,11 +4,29 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Left-side breastfeeding: breast silhouette + left cue + milk drop. -->
     <path
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="1.8"
         android:fillColor="@android:color/transparent"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M12,4 C7,4 5,8 5,12 C5,16 8,20 12,20 C12,15 9,12 9,9 C9,6 10,4 12,4 Z" />
+        android:pathData="M13.5,5.2 C9.6,5.4 6.6,8.5 6.6,12.3 C6.6,16.2 9.7,19 13.4,19 C11.2,16.6 10.5,14.5 10.5,12.1 C10.5,9.6 11.3,7.4 13.5,5.2 Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7,12 L4.6,12 M4.6,12 L6.5,10.1 M4.6,12 L6.5,13.9" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.9,11.2 m-1.05,0 a1.05,1.05 0,1 0,2.1 0 a1.05,1.05 0,1 0,0 -2.1" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.4"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M16.7,10.3 C15.7,11.6 15.2,12.6 15.2,13.6 C15.2,14.8 15.9,15.5 16.7,15.5 C17.6,15.5 18.3,14.8 18.3,13.6 C18.3,12.6 17.8,11.6 16.7,10.3 Z" />
 </vector>

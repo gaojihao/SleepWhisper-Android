@@ -153,7 +153,7 @@ private fun OnboardingContent(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 BasicText(
                     text = stringResource(R.string.onboarding_title),
-                    style = SWFont.serifItalic(24).copy(
+                    style = SWFont.serif(24).copy(
                         color = SWColor.textPrimary(scheme),
                         textAlign = TextAlign.Center
                     )

@@ -4,7 +4,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontListFontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.googlefonts.Font as GoogleFontVariant
 import androidx.compose.ui.text.googlefonts.GoogleFont
@@ -12,12 +11,10 @@ import androidx.compose.ui.unit.sp
 import com.lizhi1026.sleepwhisper.R
 
 /**
- * Aurora typography tokens. Public function names unchanged from earlier; the
- * underlying font families and metrics have been rebuilt:
+ * Aurora typography tokens. The entire Latin type system is Source Serif 4:
  *
- *   - DM Serif Display drives all `display*()` styles (large headlines only).
+ *   - Source Serif 4 SemiBold drives `display*()` headlines.
  *   - Source Serif 4 drives `title*` / `body*` / `label*` and tabular numerals.
- *   - Source Serif 4 Italic is the emotional accent (`serifItalic`).
  *   - Noto Serif CJK SC (downloadable via Google Fonts Compose) is the fallback
  *     for any text containing Chinese characters — see [cjkAware].
  *
@@ -42,20 +39,15 @@ object SWFont {
 
     // These plain-Font arrays are the single source of truth for every public
     // FontFamily in this object and for the CJK merged families in cjkAware.
-    private val DisplayFonts: Array<Font> = arrayOf(
-        Font(R.font.dm_serif_display_regular, FontWeight.Normal)
-    )
     private val BodyFonts: Array<Font> = arrayOf(
         Font(R.font.source_serif_4_regular,  FontWeight.Normal),
-        Font(R.font.source_serif_4_italic,   FontWeight.Normal, FontStyle.Italic),
         Font(R.font.source_serif_4_semibold, FontWeight.SemiBold),
         Font(R.font.source_serif_4_bold,     FontWeight.Bold)
     )
     private val CjkFonts: Array<Font> = arrayOf(CjkRegularFont, CjkSemiBoldFont)
 
-    // ── Public stable families (used directly by token functions) ─────────────
-    private val DisplaySerif = FontFamily(*DisplayFonts)
-    private val BodySerif    = FontFamily(*BodyFonts)
+    // ── Public stable family (used directly by token functions) ───────────────
+    private val BodySerif = FontFamily(*BodyFonts)
 
     /** Single-weight CJK fallback family. Loaded once via Google Play Services. */
     val CjkFallback: FontFamily = FontFamily(*CjkFonts)
@@ -79,10 +71,7 @@ object SWFont {
      */
     private fun buildCjkFamily(base: FontFamily?): FontFamily = when {
         base === null || base === BodySerif ->
-            FontFamily(*BodyFonts,    *CjkFonts)
-
-        base === DisplaySerif ->
-            FontFamily(*DisplayFonts, *BodyFonts, *CjkFonts)  // Display has no CJK face of its own
+            FontFamily(*BodyFonts, *CjkFonts)
 
         base is FontListFontFamily && base.fonts.isNotEmpty() ->
             FontFamily(*base.fonts.toTypedArray(), *CjkFonts)
@@ -91,17 +80,17 @@ object SWFont {
             FontFamily(*CjkFonts)
     }
 
-    // ─── Display (DM Serif Display) ──────────────────────────────────────────
+    // ─── Display (Source Serif 4 SemiBold) ───────────────────────────────────
     fun displayXL(): TextStyle = TextStyle(
-        fontSize = 96.sp, fontFamily = DisplaySerif, fontWeight = FontWeight.Normal,
+        fontSize = 96.sp, fontFamily = BodySerif, fontWeight = FontWeight.SemiBold,
         letterSpacing = (-2).sp, lineHeight = 96.sp
     )
     fun displayLG(): TextStyle = TextStyle(
-        fontSize = 64.sp, fontFamily = DisplaySerif, fontWeight = FontWeight.Normal,
+        fontSize = 64.sp, fontFamily = BodySerif, fontWeight = FontWeight.SemiBold,
         letterSpacing = (-1).sp, lineHeight = 67.sp
     )
     fun displayMD(): TextStyle = TextStyle(
-        fontSize = 48.sp, fontFamily = DisplaySerif, fontWeight = FontWeight.Normal,
+        fontSize = 48.sp, fontFamily = BodySerif, fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.5).sp, lineHeight = 53.sp
     )
 
@@ -153,9 +142,9 @@ object SWFont {
         fontFeatureSettings = TNUM, letterSpacing = (-2).sp, lineHeight = 96.sp
     )
 
-    /** Emotional italic accent — used on greetings, sleeping captions, hero subtitles. */
-    fun serifItalic(size: Int): TextStyle = TextStyle(
+    /** Custom-size serif accent — used on greetings, sleeping captions, hero subtitles. */
+    fun serif(size: Int): TextStyle = TextStyle(
         fontSize = size.sp, fontFamily = BodySerif, fontWeight = FontWeight.Normal,
-        fontStyle = FontStyle.Italic, lineHeight = (size * 1.4f).sp
+        lineHeight = (size * 1.4f).sp
     )
 }

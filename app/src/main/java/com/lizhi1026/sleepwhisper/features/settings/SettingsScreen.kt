@@ -82,7 +82,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         ) {
             BasicText(
                 text = stringResource(R.string.settings_title),
-                style = SWFont.serifItalic(28).copy(color = SWColor.textPrimary(scheme)),
+                style = SWFont.serif(28).copy(color = SWColor.textPrimary(scheme)),
                 modifier = Modifier.padding(top = SWSpacing.xs, bottom = SWSpacing.xs)
             )
             Hairline(modifier = Modifier.width(60.dp).padding(bottom = SWSpacing.xs))

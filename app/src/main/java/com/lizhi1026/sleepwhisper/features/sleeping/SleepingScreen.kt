@@ -223,7 +223,7 @@ private fun TitleSection(babyName: String) {
     ) {
         BasicText(
             text = stringResource(R.string.sleeping_title_protecting, babyName),
-            style = SWFont.serifItalic(17).copy(
+            style = SWFont.serif(17).copy(
                 color = Color.White.copy(alpha = 0.95f),
                 textAlign = TextAlign.Center,
                 letterSpacing = 1.4.sp
