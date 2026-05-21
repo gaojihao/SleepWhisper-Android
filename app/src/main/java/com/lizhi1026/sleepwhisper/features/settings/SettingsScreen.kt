@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -44,8 +45,11 @@ import com.lizhi1026.sleepwhisper.core.visualkit.SWSpacing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.AuroraBackdrop
 import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
+import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SWSegmentedPicker
+import com.lizhi1026.sleepwhisper.core.visualkit.components.SectionLabel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SegmentedOption
+import com.lizhi1026.sleepwhisper.core.visualkit.components.SerifMetricRow
 import com.lizhi1026.sleepwhisper.model.Baby
 import com.lizhi1026.sleepwhisper.model.UserSettings
 
@@ -81,17 +85,20 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 style = SWFont.serifItalic(28).copy(color = SWColor.textPrimary(scheme)),
                 modifier = Modifier.padding(top = SWSpacing.xs, bottom = SWSpacing.xs)
             )
+            Hairline(modifier = Modifier.width(60.dp).padding(bottom = SWSpacing.xs))
 
             baby?.let { b ->
                 SectionCard(title = stringResource(R.string.settings_section_baby)) {
-                    LabelRow(
+                    SerifMetricRow(
                         label = stringResource(R.string.settings_baby_name),
-                        value = b.name
+                        value = b.name,
+                        showChevron = false
                     )
-                    Divider()
-                    LabelRow(
+                    Hairline()
+                    SerifMetricRow(
                         label = stringResource(R.string.settings_baby_age),
-                        value = formatAge(b)
+                        value = formatAge(b),
+                        showChevron = false
                     )
                 }
             }
@@ -107,7 +114,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                         vm.update { it.copy(defaultTimerMinutes = (it.defaultTimerMinutes + 5).coerceAtMost(120)) }
                     }
                 )
-                Divider()
+                Hairline()
                 StepperRow(
                     label = stringResource(R.string.settings_fadeaftersleep_label),
                     valueText = stringResource(R.string.settings_minutes_value, s.fadeAfterSleepMinutes),
@@ -118,7 +125,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                         vm.update { it.copy(fadeAfterSleepMinutes = (it.fadeAfterSleepMinutes + 1).coerceAtMost(15)) }
                     }
                 )
-                Divider()
+                Hairline()
                 ToggleRow(
                     label = stringResource(R.string.settings_haptics),
                     on = s.hapticFeedback,
@@ -150,7 +157,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     }
                 )
                 if (s.cryDetectionEnabled) {
-                    Divider()
+                    Hairline()
                     StepperRow(
                         label = stringResource(R.string.settings_cry_sensitivity_label),
                         valueText = stringResource(R.string.settings_db_value, s.cryDetectionThresholdDb),
@@ -179,12 +186,13 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                     selected = s.appearance,
                     onSelect = { mode -> vm.update { it.copy(appearance = mode) } }
                 )
-                Divider()
-                LabelRow(
+                Hairline()
+                SerifMetricRow(
                     label = stringResource(R.string.settings_nightmode_label),
-                    value = "${s.nightModeStartHour}:00 – ${s.nightModeEndHour}:00"
+                    value = "${s.nightModeStartHour}:00 – ${s.nightModeEndHour}:00",
+                    showChevron = false
                 )
-                Divider()
+                Hairline()
                 ToggleRow(
                     label = stringResource(R.string.settings_nightmode_preview),
                     on = forceNightPreview,
@@ -193,9 +201,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             }
 
             SectionCard(title = stringResource(R.string.settings_section_about)) {
-                LabelRow(
+                SerifMetricRow(
                     label = stringResource(R.string.settings_version),
-                    value = s.lastSeenVersion
+                    value = s.lastSeenVersion,
+                    showChevron = false
                 )
                 Spacer(Modifier.height(SWSpacing.xs))
                 BasicText(
@@ -227,7 +236,6 @@ private fun formatAge(b: Baby): String {
 
 @Composable
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
-    val scheme = LocalSWScheme.current
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 20.dp,
@@ -235,28 +243,9 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
         elevation = ElevationLevel.SOFT
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
-            BasicText(
-                text = title.uppercase(),
-                style = SWFont.labelMD().copy(
-                    color = SWColor.textSecondary(scheme),
-                    letterSpacing = 1.4.sp
-                )
-            )
+            SectionLabel(title)
             content()
         }
-    }
-}
-
-@Composable
-private fun LabelRow(label: String, value: String) {
-    val scheme = LocalSWScheme.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        BasicText(label, style = SWFont.bodyMD().copy(color = SWColor.textPrimary(scheme)))
-        BasicText(value, style = SWFont.bodyMD().copy(color = SWColor.textSecondary(scheme)))
     }
 }
 
@@ -337,15 +326,4 @@ private fun StepperButton(label: String, onClick: () -> Unit) {
             style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
         )
     }
-}
-
-@Composable
-private fun Divider() {
-    val scheme = LocalSWScheme.current
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(SWColor.border(scheme).copy(alpha = 0.15f))
-    )
 }
