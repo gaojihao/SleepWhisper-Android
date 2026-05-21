@@ -1,6 +1,33 @@
 package com.lizhi1026.sleepwhisper.model
 
+import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+
+/**
+ * 3-color aura for an audio preset:
+ *  - [top]    brightest highlight; used as AudioWaveform color and orb core
+ *  - [mid]    primary tone; the one pushed to HeroBackdropController.ambient
+ *             so the AuroraBackdrop drifts toward this color across screens
+ *  - [bottom] deepest "room" color; the orb's outer ring
+ *
+ * Marked @Transient because Compose `Color` is not @Serializable. The
+ * bundled catalog is a hardcoded list and is never serialized at runtime,
+ * but @Transient defends against future regressions if a feature tries
+ * to write a whole AudioPreset to DataStore.
+ */
+@Serializable
+data class AuraColors(
+    @Transient val top: Color = Color(0xFFB8A4FF),
+    @Transient val mid: Color = Color(0xFF4D3C7A),
+    @Transient val bottom: Color = Color(0xFF0F0C1E)
+) {
+    companion object {
+        /** WARNING: returned only if a preset forgot to populate auraColors —
+         *  catch via AudioPresetAuraTest before merging. */
+        val DEFAULT = AuraColors()
+    }
+}
 
 @Serializable
 data class AudioPreset(
@@ -13,7 +40,9 @@ data class AudioPreset(
     val defaultDurationSeconds: Int = 1800,
     val loop: Boolean = true,
     val license: String = "CC0",
-    val iconName: String
+    val iconName: String,
+    @Transient
+    val auraColors: AuraColors = AuraColors.DEFAULT
 ) {
     enum class AudioCategory(val serializedName: String) {
         WOMB("womb"),
@@ -36,7 +65,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_womb"
+                iconName = "ic_preset_womb",
+                auraColors = AuraColors(top = Color(0xFFC46B8C), mid = Color(0xFF5B4880), bottom = Color(0xFF1A0F1E))
             ),
             AudioPreset(
                 id = "preset_heartbeat_001",
@@ -48,7 +78,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_heartbeat"
+                iconName = "ic_preset_heartbeat",
+                auraColors = AuraColors(top = Color(0xFFC44E5C), mid = Color(0xFF4E1A22), bottom = Color(0xFF1A0A0E))
             ),
             AudioPreset(
                 id = "preset_dryer_001",
@@ -60,7 +91,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_dryer"
+                iconName = "ic_preset_dryer",
+                auraColors = AuraColors(top = Color(0xFFC99B5A), mid = Color(0xFF6B4A20), bottom = Color(0xFF1A1108))
             ),
             AudioPreset(
                 id = "preset_vacuum_001",
@@ -72,7 +104,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_vacuum"
+                iconName = "ic_preset_vacuum",
+                auraColors = AuraColors(top = Color(0xFF6E6A66), mid = Color(0xFF38362F), bottom = Color(0xFF14130F))
             ),
             AudioPreset(
                 id = "preset_white_001",
@@ -84,7 +117,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_white"
+                iconName = "ic_preset_white",
+                auraColors = AuraColors(top = Color(0xFFFAFAFA), mid = Color(0xFFECE9E2), bottom = Color(0xFF1F222A))
             ),
             AudioPreset(
                 id = "preset_brown_001",
@@ -96,7 +130,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_brown"
+                iconName = "ic_preset_brown",
+                auraColors = AuraColors(top = Color(0xFF8A6850), mid = Color(0xFF3E2A1F), bottom = Color(0xFF1A100A))
             ),
             AudioPreset(
                 id = "preset_pink_001",
@@ -108,7 +143,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_pink"
+                iconName = "ic_preset_pink",
+                auraColors = AuraColors(top = Color(0xFFE6B6B8), mid = Color(0xFFB85F77), bottom = Color(0xFF1A0F12))
             ),
             AudioPreset(
                 id = "preset_rain_001",
@@ -120,7 +156,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_rain"
+                iconName = "ic_preset_rain",
+                auraColors = AuraColors(top = Color(0xFFB7C3CC), mid = Color(0xFF4A5A6E), bottom = Color(0xFF0F1620))
             ),
             AudioPreset(
                 id = "preset_ocean_001",
@@ -132,7 +169,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_ocean"
+                iconName = "ic_preset_ocean",
+                auraColors = AuraColors(top = Color(0xFF2E7A86), mid = Color(0xFF1F4F73), bottom = Color(0xFF051A26))
             ),
             AudioPreset(
                 id = "preset_fan_001",
@@ -144,7 +182,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_fan"
+                iconName = "ic_preset_fan",
+                auraColors = AuraColors(top = Color(0xFFB5BFC8), mid = Color(0xFF4F5C68), bottom = Color(0xFF0E1418))
             ),
             AudioPreset(
                 id = "preset_lullaby_001",
@@ -156,7 +195,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_lullaby_1"
+                iconName = "ic_preset_lullaby_1",
+                auraColors = AuraColors(top = Color(0xFFAD5CDC), mid = Color(0xFF6B3FA0), bottom = Color(0xFF0D0C1F))
             ),
             AudioPreset(
                 id = "preset_lullaby_002",
@@ -168,7 +208,8 @@ data class AudioPreset(
                 defaultDurationSeconds = 1800,
                 loop = true,
                 license = "CC0",
-                iconName = "ic_preset_lullaby_2"
+                iconName = "ic_preset_lullaby_2",
+                auraColors = AuraColors(top = Color(0xFFFFB088), mid = Color(0xFF8C4A26), bottom = Color(0xFF1A0E08))
             )
         )
 
