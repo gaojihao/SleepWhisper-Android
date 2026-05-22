@@ -79,6 +79,18 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
+/**
+ * 首页主屏幕（features/home 层）
+ *
+ * 职责：
+ * - 展示问候语、清醒窗口倒计时、睡眠 CTA 圆按钮、正在播放卡片与快捷操作网格。
+ * - 接收 [SharedTransitionScope] 与 [AnimatedVisibilityScope]，通过 `sleepHeroOrigin` 修饰符
+ *   与 SleepingScreen 实现 Hero 共享元素过渡动画。
+ * - 通过 [HomeViewModel] 观察 `baby / cachedWakeWindow / playerState / currentPreset /
+ *   hasSeenHints` 五条 LiveData；所有写操作委托给 `vm.app.xxx()`（AppStateContainer 门面）。
+ * - 用户交互：点击 SleepCTA → 启动睡眠并触发 Hero 跳转；长按 SleepCTA → 弹出 SleepTypePicker；
+ *   快捷瓦片一键记录母乳左/右、奶瓶（弹出计量弹层）、纸尿裤。
+ */
 @OptIn(
     androidx.compose.animation.ExperimentalSharedTransitionApi::class
 )
@@ -89,15 +101,15 @@ fun HomeScreen(
     vm: HomeViewModel = hiltViewModel()
 ) {
     val scheme = LocalSWScheme.current
+    // 观察婴儿档案、清醒窗口、播放器状态、当前音效预设及新手提示是否已读
     val baby by vm.baby.observeAsState(null)
     val wakeWindow by vm.cachedWakeWindow.observeAsState(null)
     val playerState by vm.playerState.observeAsState(PlayerState.Idle)
     val currentPreset by vm.currentPreset.observeAsState(null)
     val hasSeenHints by vm.hasSeenHints.observeAsState(false)
 
-    // Poll hour-of-day so the LaunchedEffect below re-fires when the clock
-    // crosses an hour boundary (e.g. user keeps Home open across 19:00 and
-    // expects the evening ambient hint to kick in).
+    // 每 60 秒轮询当前小时值，跨越整点时（如 19:00）重新触发 LaunchedEffect，
+    // 使傍晚环境光提示能在用户保持首页不退出的情况下自动切换。
     val hour by androidx.compose.runtime.produceState(
         initialValue = java.time.LocalTime.now().hour
     ) {
@@ -109,13 +121,13 @@ fun HomeScreen(
 
     val heroBackdrop = LocalHeroBackdropController.current
     LaunchedEffect(hour, currentPreset) {
-        // Priority: active preset's mid color > evening time-of-day hint > null.
-        // When a preset is playing, its aura wins; when it stops, the time-of-day
-        // hint takes over again automatically.
+        // 优先级：正在播放的预设 mid 颜色 > 傍晚时段橙色提示 > null。
+        // 预设播放时其光晕颜色胜出；停止后自动恢复时段提示颜色。
         val eveningHint = if (hour >= 19 || hour < 6) Color(0xFFFFB088) else null
         heroBackdrop.syncToPlayer(currentPreset = currentPreset, fallback = eveningHint)
     }
 
+    // 各浮层显示状态
     var showBottleSheet by remember { mutableStateOf(false) }
     var showSleepTypePicker by remember { mutableStateOf(false) }
     var showPlayerSheet by remember { mutableStateOf(false) }
@@ -132,10 +144,12 @@ fun HomeScreen(
         ) {
             GreetingSection(babyName = baby?.name, dobMs = baby?.dateOfBirth, hour = hour)
 
+            // 仅当 ViewModel 拿到清醒窗口数据时才展示（首次启动可能为 null）
             wakeWindow?.let { (remaining, total) ->
                 WakeWindowCard(remaining = remaining, total = total)
             }
 
+            // morphProgress 由 AppStateContainer 控制，防止 Hero 动画期间重复触发
             val morphScope = rememberCoroutineScope()
             val morphProgress by remember(vm.app.morphProgress) {
                 derivedStateOf { vm.app.morphProgress.value }
@@ -144,14 +158,16 @@ fun HomeScreen(
                 sharedScope = sharedScope,
                 animScope = animScope,
                 onTap = {
+                    // 点击：仅在未处于过渡状态时才启动 morphProgress 动画并调用 startSleep()
                     if (morphProgress <= 0f || morphProgress >= 1f) {
                         morphScope.launch { vm.app.beginSleepMorph() }
                         vm.onTapSleep()
                     }
                 },
-                onLongPress = { showSleepTypePicker = true }
+                onLongPress = { showSleepTypePicker = true } // 长按：弹出睡眠类型选择器
             )
 
+            // 新手提示：用户未读时展示，调用 vm::onDismissHints 后永久隐藏
             if (!hasSeenHints) {
                 OnboardingHintsCard(onDismiss = vm::onDismissHints)
             }
@@ -163,12 +179,14 @@ fun HomeScreen(
                 onClick = { showPlayerSheet = true }
             )
 
+            // 快捷操作网格：奶瓶需先填写毫升数，故通过回调弹出 BottleAmountSheet
             QuickActionsGrid(vm, onBottleTap = { showBottleSheet = true })
 
             Spacer(Modifier.height(SWSpacing.lg))
         }
 
         if (showBottleSheet) {
+            // 奶瓶喂养：确认时带毫升数记录，跳过时毫升数为 null
             BottleAmountSheet(
                 onConfirm = { ml -> vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = ml) },
                 onSkip = { vm.onRecordFeeding(FeedingMethod.BOTTLE, ml = null) },
@@ -176,6 +194,7 @@ fun HomeScreen(
             )
         }
         if (showSleepTypePicker) {
+            // 睡眠类型选择：由 AppStateContainer 推断默认类型（小睡/夜睡/接觉）
             SleepTypePicker(
                 suggestedType = vm.app.defaultSleepType(),
                 onPick = { type -> vm.onPickSleepType(type) },
@@ -183,18 +202,27 @@ fun HomeScreen(
             )
         }
         if (showPlayerSheet) {
+            // 播放器面板：全屏覆盖，关闭即回到首页
             PlayerSheet(onDismiss = { showPlayerSheet = false })
         }
     }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Section composables
+// 子组合函数（Section composables）
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * 顶部问候区：根据当前小时显示时段问候语，展示宝宝姓名与出生天数。
+ *
+ * @param babyName 宝宝姓名，为 null 时只显示问候语。
+ * @param dobMs 出生时间戳（毫秒），用于计算出生天数。
+ * @param hour 当前小时（0-23），由 HomeScreen 每分钟刷新传入。
+ */
 @Composable
 private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
     val scheme = LocalSWScheme.current
+    // 将出生毫秒时间戳换算为距今天数，仅在 dobMs 变化时重算
     val daysOld = remember(dobMs) {
         dobMs?.let {
             val birth = LocalDate.ofEpochDay(it / 86_400_000L)
@@ -228,14 +256,21 @@ private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
                 }
             }
         }
-        // Short hairline flourish — reads as a book-chapter rule, not a divider.
+        // 短横线装饰，类似书章节标题下方的章节线，仅作视觉分隔而非完整分割线。
         Hairline(modifier = Modifier.width(52.dp).padding(top = SWSpacing.xxs))
     }
 }
 
+/**
+ * 清醒窗口卡片：显示剩余清醒分钟数及进度条。
+ *
+ * @param remaining 剩余清醒分钟数；≤20 时变橙色警告，≤0 时变红色危险提示。
+ * @param total 当前宝宝年龄对应的清醒窗口总分钟数，用于计算进度比例。
+ */
 @Composable
 private fun WakeWindowCard(remaining: Int, total: Int) {
     val scheme = LocalSWScheme.current
+    // 根据剩余时间决定颜色：正常→主色，接近→警告橙，超时→危险红
     val color = when {
         remaining > 20 -> SWColor.textPrimary(scheme)
         remaining > 0 -> SWColor.warning(scheme)
@@ -276,6 +311,7 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
                     .background(SWColor.border(scheme).copy(alpha = 0.3f))
             ) {
                 val frac = (remaining.toFloat() / total.coerceAtLeast(1)).coerceIn(0f, 1f)
+                // 渐变进度条：以 auroraGlow 渐变色填充，宽度按剩余比例缩放
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(frac)
@@ -288,6 +324,14 @@ private fun WakeWindowCard(remaining: Int, total: Int) {
     }
 }
 
+/**
+ * 正在播放卡片：展示当前音效预设图标、名称及播放波形动画。
+ *
+ * @param presetIconName drawable 资源名称字符串（运行时动态解析），为 null 时显示默认月亮图标。
+ * @param presetName 预设显示名称，为 null 时显示占位文案。
+ * @param isPlaying 是否正在播放，控制波形动画显示。
+ * @param onClick 点击卡片后回调，父级负责弹出 PlayerSheet。
+ */
 @Composable
 private fun NowPlayingCard(
     presetIconName: String?,
@@ -297,6 +341,7 @@ private fun NowPlayingCard(
 ) {
     val scheme = LocalSWScheme.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    // 动态查找 drawable 资源 ID，找不到时 fallback 为 null（后续使用默认月亮图标）
     val presetIconRes = remember(presetIconName) {
         presetIconName?.let { name ->
             ctx.resources.getIdentifier(name, "drawable", ctx.packageName).takeIf { it != 0 }
@@ -312,7 +357,7 @@ private fun NowPlayingCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SWSpacing.md)
         ) {
-            // Left icon circle (52dp) — preset icon if known, else "moon" placeholder
+            // 左侧图标圆圈（52dp）：有预设图标时显示，否则显示默认月亮占位图
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -334,7 +379,7 @@ private fun NowPlayingCard(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            // Middle: title + (waveform when playing)
+            // 中间：预设名称 + 播放时显示音频波形动画
             Column(modifier = Modifier.weight(1f)) {
                 BasicText(
                     text = presetName ?: stringResource(R.string.home_nowplaying_placeholder),
@@ -349,15 +394,22 @@ private fun NowPlayingCard(
                     )
                 }
             }
-            // Right: ChevronTrail replaces the previous static chevron icon
+            // 右侧：ChevronTrail 替换原有静态箭头图标，提供更丰富的视觉引导
             ChevronTrail()
         }
     }
 }
 
+/**
+ * 快捷操作网格：两行两列瓦片，一键记录母乳左/右、奶瓶、纸尿裤。
+ *
+ * @param vm 首页 ViewModel，写操作通过 vm.onRecordFeeding / vm.onRecordDiaper 委托给 AppStateContainer。
+ * @param onBottleTap 奶瓶瓦片点击回调，父级负责弹出 BottleAmountSheet 让用户填写毫升数。
+ */
 @Composable
 private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
+        // 第一行：母乳左乳、母乳右乳
         Row(horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
             QuickActionTile(
                 label = stringResource(R.string.quickaction_breastleft),
@@ -374,6 +426,7 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
                 modifier = Modifier.weight(1f)
             )
         }
+        // 第二行：奶瓶（点击弹出计量弹层，长按直接记录不填量）、纸尿裤（默认湿尿片类型）
         Row(horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)) {
             QuickActionTile(
                 label = stringResource(R.string.quickaction_bottle),
@@ -394,6 +447,18 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
     }
 }
 
+/**
+ * 睡眠 CTA 圆按钮：首页核心交互入口。
+ *
+ * - **点击**：调用 `onTap`，父级触发 `app.beginSleepMorph()` + `app.startSleep()`，
+ *   同时通过 `sleepHeroOrigin` 修饰符启动与 SleepingScreen 的 Hero 共享元素过渡。
+ * - **长按**：调用 `onLongPress`，父级弹出 [SleepTypePicker] 让用户选择小睡/夜睡/接觉。
+ *
+ * @param sharedScope 来自导航宿主的 SharedTransitionScope，用于 Hero 动画。
+ * @param animScope 来自导航宿主的 AnimatedVisibilityScope，配合 SharedTransitionScope 使用。
+ * @param onTap 单击回调。
+ * @param onLongPress 长按回调。
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun SleepCTA(

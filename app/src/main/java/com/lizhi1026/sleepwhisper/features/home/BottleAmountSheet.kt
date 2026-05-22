@@ -37,10 +37,15 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButtonStyle
 
 /**
- * Bottom overlay for entering bottle feeding amount — port of iOS BottleAmountSheet.swift.
- * - Two adjuster buttons (-10 / +10 ml) instead of a Slider (no Material dep).
- * - 6 preset chips: 60/90/120/150/180/210 ml.
- * - Save -> onConfirm(amount); Skip -> onSkip() (no-amount feed).
+ * 奶瓶喂养计量底部弹层（features/home 层）
+ *
+ * 职责：
+ * - 让用户输入本次奶瓶喂养的毫升数，支持 -10/+10 微调按钮与 6 个快捷预设（60/90/120/150/180/210 ml）。
+ * - 确认后回调 [onConfirm] 携带毫升数；跳过时回调 [onSkip]（毫升数为 null）；
+ *   点击背景遮罩或调用 [onDismiss] 关闭弹层。
+ * - 不持有 ViewModel，纯 UI 组件，由 HomeScreen 通过回调完成数据写入。
+ *
+ * 对应 iOS BottleAmountSheet.swift，用两个按钮替代 Slider（避免引入 Material 依赖）。
  */
 @Composable
 fun BottleAmountSheet(
@@ -50,6 +55,7 @@ fun BottleAmountSheet(
     onDismiss: () -> Unit
 ) {
     val scheme = LocalSWScheme.current
+    // 当前奶量，限制在 30~300 ml 范围内
     var amount by remember { mutableIntStateOf(initialAmount.coerceIn(30, 300)) }
 
     Box(
@@ -100,12 +106,14 @@ fun BottleAmountSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)
                 ) {
+                    // -10 按钮：最小值 30 ml
                     SoftButton(
                         text = "-10",
                         onClick = { amount = (amount - 10).coerceAtLeast(30) },
                         style = SoftButtonStyle.GHOST,
                         modifier = Modifier.weight(1f)
                     )
+                    // +10 按钮：最大值 300 ml
                     SoftButton(
                         text = "+10",
                         onClick = { amount = (amount + 10).coerceAtMost(300) },
@@ -114,6 +122,7 @@ fun BottleAmountSheet(
                     )
                 }
 
+                // 快捷预设芯片行：选中项以 accent 渐变高亮
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(SWSpacing.xs)
@@ -148,12 +157,14 @@ fun BottleAmountSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)
                 ) {
+                    // 跳过：记录喂养事件但不填写毫升数
                     SoftButton(
                         text = stringResource(R.string.bottle_skip),
                         onClick = { onSkip(); onDismiss() },
                         style = SoftButtonStyle.GHOST,
                         modifier = Modifier.weight(1f)
                     )
+                    // 保存：携带当前奶量回调并关闭弹层
                     SoftButton(
                         text = stringResource(R.string.bottle_save),
                         onClick = { onConfirm(amount); onDismiss() },

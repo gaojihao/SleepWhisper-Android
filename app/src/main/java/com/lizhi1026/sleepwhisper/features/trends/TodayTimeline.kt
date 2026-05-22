@@ -1,3 +1,12 @@
+/**
+ * TodayTimeline.kt — 今日睡眠与喂食水平时间轴（UI 层 / features/trends）
+ *
+ * 职责：
+ * - 以 24 小时为横轴，在 Canvas 中绘制背景轨道、睡眠色块（胶囊形）、喂食圆点
+ * - 跨日睡眠（startAt < 00:00）会自动裁剪到今日 00:00 起点
+ * - 正在进行的睡眠（endAt == null）以当前时间为临时终点
+ * - 底部 HourLegend 显示 0 / 6 / 12 / 18 / 24 刻度标签
+ */
 package com.lizhi1026.sleepwhisper.features.trends
 
 import androidx.compose.foundation.Canvas
@@ -26,9 +35,18 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * 24-hour horizontal timeline for today — port of iOS TodayTimelineCard.
- * Renders a track + sleep capsules (filled) + feeding dots (small circles).
- * Long sleeps that started before today are clipped to 00:00.
+ * 今日 24 小时水平时间轴 Composable。
+ *
+ * Canvas 绘制层次（从底到顶）：
+ * 1. 背景轨道（surfaceSunken 圆角矩形）
+ * 2. 睡眠色块（primary 颜色胶囊，跨日自动裁剪）
+ * 3. 喂食圆点（accent 颜色小圆，半径 4dp）
+ *
+ * 底部由 [HourLegend] 提供 0/6/12/18/24 文字刻度。
+ *
+ * @param sleeps 今日睡眠记录（可含跨日和进行中记录）
+ * @param feedings 今日喂食记录
+ * @param modifier 外部传入的 Modifier
  */
 @Composable
 fun TodayTimeline(
@@ -37,13 +55,14 @@ fun TodayTimeline(
     modifier: Modifier = Modifier
 ) {
     val scheme = LocalSWScheme.current
+    // 缓存今日 00:00 时间戳，避免重组时重复计算
     val todayStartMs = remember24hStart()
     val dayMs = 24 * 3600_000L
     val now = System.currentTimeMillis()
 
     Box(modifier = modifier.fillMaxWidth()) {
         Canvas(modifier = Modifier.fillMaxWidth().height(64.dp)) {
-            // Track background
+            // Track background（背景轨道，占 Canvas 高度的 60%，垂直居中）
             val trackHeight = size.height * 0.6f
             val trackY = (size.height - trackHeight) / 2f
             drawRoundRect(
@@ -53,22 +72,25 @@ fun TodayTimeline(
                 cornerRadius = CornerRadius(trackHeight / 2f)
             )
 
-            // Sleep capsules
+            // Sleep capsules（睡眠色块：跨日裁剪到今日 00:00，进行中取当前时间为终点）
             sleeps.forEach { s ->
                 val rawStart = s.startAt.coerceAtLeast(todayStartMs)
                 val rawEnd = (s.endAt ?: now).coerceAtMost(todayStartMs + dayMs)
+                // 跳过有效区间为零或负值的记录（如跨日但已超出今日范围）
                 if (rawEnd <= rawStart) return@forEach
+                // 将时间戳映射到 Canvas 横轴像素坐标
                 val xStart = (rawStart - todayStartMs).toFloat() / dayMs * size.width
                 val xEnd = (rawEnd - todayStartMs).toFloat() / dayMs * size.width
                 drawRoundRect(
                     color = SWColor.primary(scheme).copy(alpha = 0.85f),
                     topLeft = Offset(xStart, trackY),
+                    // 最小宽度 2dp，保证极短睡眠也可见
                     size = Size((xEnd - xStart).coerceAtLeast(2.dp.toPx()), trackHeight),
                     cornerRadius = CornerRadius(trackHeight / 2f)
                 )
             }
 
-            // Feeding dots
+            // Feeding dots（喂食圆点：accent 颜色，半径 4dp，垂直居中）
             feedings.forEach { f ->
                 val x = (f.startedAt - todayStartMs).toFloat() / dayMs * size.width
                 drawCircle(
@@ -78,10 +100,15 @@ fun TodayTimeline(
                 )
             }
         }
+        // 时间刻度图例，紧贴 Canvas 下方
         HourLegend(modifier = Modifier.fillMaxWidth())
     }
 }
 
+/**
+ * 时间轴底部小时刻度图例（0 / 6 / 12 / 18 / 24），
+ * 使用 Row SpaceBetween 均匀分布，字体为 labelSM 三级文字色。
+ */
 @Composable
 private fun HourLegend(modifier: Modifier = Modifier) {
     val scheme = LocalSWScheme.current
@@ -98,6 +125,10 @@ private fun HourLegend(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * 用 [remember] 缓存今日 00:00:00 的毫秒时间戳。
+ * 避免每次重组时重新构造 ZonedDateTime，保持引用稳定性。
+ */
 @Composable
 private fun remember24hStart(): Long = remember {
     ZonedDateTime.now(ZoneId.systemDefault())
@@ -105,10 +136,12 @@ private fun remember24hStart(): Long = remember {
         .toInstant().toEpochMilli()
 }
 
+// 工具函数：将毫秒时间戳格式化为 "HH:mm" 字符串（调试/扩展用，当前未在 UI 中直接使用）
 @Suppress("unused")
 private fun nowFormatted(ms: Long): String =
     java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ms))
 
+// 工具函数：从毫秒时间戳提取本地时区的小时数（调试/扩展用，当前未在 UI 中直接使用）
 @Suppress("unused")
 private fun instantHour(ms: Long): Int =
     Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).hour

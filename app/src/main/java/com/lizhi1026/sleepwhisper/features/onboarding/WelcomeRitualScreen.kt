@@ -1,3 +1,15 @@
+/**
+ * WelcomeRitualScreen.kt — 首次注册后的欢迎仪式页（UI 层 / features/onboarding）
+ *
+ * 用途：宝宝档案保存成功后，以 4 阶段动画序列向用户呈现沉浸式欢迎体验，然后自动
+ *       过渡到主界面。背景为 NightSkyCanvas（星空）+ AuroraBackdrop（极光光晕）。
+ * 视觉要素：auroraGlow 渐变 hero 圆 + 88sp DM Serif 宝宝名 + 性别化欢迎语。
+ * 动画时序（ms）：0 → 光环扩张 80dp→220dp（700ms EaseOut），同步淡入；
+ *                 +600 → stage 2：问候语 + 宝宝名渐显；
+ *                 +800 → stage 3：性别化欢迎语 + "轻触继续"提示渐显；
+ *                 +1200 → 自动调用 app.dismissWelcome() 完成仪式。
+ * 用户交互：stage >= 3 时点击屏幕任意位置可提前关闭仪式（调用 [finishOnce]）。
+ */
 package com.lizhi1026.sleepwhisper.features.onboarding
 
 import androidx.compose.animation.AnimatedVisibility
@@ -52,9 +64,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * 4-stage welcome ritual — port of iOS WelcomeRitualView.swift.
- * Timing (in ms): 0 → ring expands 80→220, +600 greeting in, +1400 message in,
- * +2600 auto-dismiss. Tap anywhere advances to dismiss after stage>=3.
+ * 欢迎仪式全屏 Composable。
+ *
+ * 接收 [AppStateContainer] 直接作为参数（而非 ViewModel），因为本页是过渡性仪式页，
+ * 无须独立 ViewModel，所有状态（baby、dismissWelcome）均来自全局容器。
+ *
+ * @param app 全局状态容器，提供 baby 观察与 dismissWelcome 回调
  */
 @Composable
 fun WelcomeRitualScreen(app: AppStateContainer) {
@@ -67,26 +82,29 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
     val ringSize = remember { Animatable(80f) }
     val ringOpacity = remember { Animatable(0f) }
 
+    // 防重复关闭：finished 标志确保 dismissWelcome() 只调用一次
     fun finishOnce() {
         if (finished) return
         finished = true
         app.dismissWelcome()
     }
 
+    // 仪式动画时序编排：ring 扩张与淡入并行，随后按 stage 依次展示文案
     LaunchedEffect(Unit) {
         scope.launch {
-            stage = 1
+            stage = 1  // stage 1：光环开始扩张
             ringSize.animateTo(220f, tween(durationMillis = 700, easing = EaseOut))
         }
         scope.launch {
+            // 光环同步淡入，与尺寸动画并行
             ringOpacity.animateTo(1f, tween(durationMillis = 700, easing = EaseOut))
         }
         delay(600)
-        stage = 2
+        stage = 2   // stage 2：问候语 + 宝宝名渐显
         delay(800)
-        stage = 3
+        stage = 3   // stage 3：性别化欢迎语 + 轻触提示渐显
         delay(1200)
-        finishOnce()
+        finishOnce()  // 自动关闭仪式，过渡至主界面
     }
 
     val ringStrokeColor = SWColor.accentSecondary(scheme)
@@ -181,6 +199,11 @@ fun WelcomeRitualScreen(app: AppStateContainer) {
     }
 }
 
+/**
+ * 根据宝宝性别返回对应的欢迎语字符串资源 ID。
+ *
+ * FEMALE → welcome_message_her；MALE → welcome_message_him；其他 → welcome_message_baby
+ */
 private fun messageKeyForGender(g: Baby.BabyGender?): Int = when (g) {
     Baby.BabyGender.FEMALE -> R.string.welcome_message_her
     Baby.BabyGender.MALE -> R.string.welcome_message_him

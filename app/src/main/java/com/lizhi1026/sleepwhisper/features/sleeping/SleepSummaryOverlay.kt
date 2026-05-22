@@ -1,3 +1,14 @@
+/**
+ * SleepSummaryOverlay.kt — 睡眠结束后的摘要浮层（UI 层 / features/sleeping）
+ *
+ * 用途：睡眠会话结束后，由 AppStateContainer.lastSleepSummary 触发显示，以全屏半透明
+ *       遮罩 + 弹入卡片的方式呈现本次睡眠时长及与昨日的对比。
+ * 用户交互流程：
+ *   1. AppStateContainer.lastSleepSummary 变为非 null → 上层将其传入 [SleepSummaryOverlay]；
+ *   2. 卡片弹入动画（scale 0.85→1 / opacity 0→1，阻尼弹簧），sparkle 图标独立弹跳；
+ *   3. 用户点击"好的"按钮或点击背景遮罩 → 调用 onDismiss 清除摘要；
+ *   4. 启用 reduceMotion 时跳过所有动画，初始值直接置为终态。
+ */
 package com.lizhi1026.sleepwhisper.features.sleeping
 
 import androidx.compose.animation.core.Animatable
@@ -56,11 +67,13 @@ fun SleepSummaryOverlay(
     val appear = remember { Animatable(if (reduceMotion) 1f else 0f) }
     val iconBounce = remember { Animatable(if (reduceMotion) 1f else 0.6f) }
 
+    // 卡片弹入动画：dampingRatio=0.78 产生轻微回弹，避免生硬的线性展开
     LaunchedEffect(Unit) {
         if (!reduceMotion) {
             appear.animateTo(1f, spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow))
         }
     }
+    // sparkle 图标独立弹跳：较低阻尼比（0.45）产生更明显的弹性，强调庆祝感
     LaunchedEffect(Unit) {
         if (!reduceMotion) {
             iconBounce.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessLow))
@@ -132,6 +145,12 @@ fun SleepSummaryOverlay(
     }
 }
 
+/**
+ * 将总秒数格式化为人类可读的时长字符串。
+ *
+ * 超过 1 小时：使用 summary_duration_hm（"X小时Y分钟"）；
+ * 不足 1 小时：使用 summary_duration_m（"X分钟"）。
+ */
 @Composable
 private fun formatDurationDisplay(seconds: Long): String {
     val h = (seconds / 3600).toInt()
@@ -140,6 +159,13 @@ private fun formatDurationDisplay(seconds: Long): String {
     else stringResource(R.string.summary_duration_m, m)
 }
 
+/**
+ * 生成今日睡眠与昨日的对比句子。
+ *
+ * - 无昨日数据：仅展示今日总时长；
+ * - 差值 ≤5 分钟：视为"相当"；
+ * - 正趋势：更多；负趋势：更少。
+ */
 @Composable
 private fun comparisonSentence(s: SleepSummary): String {
     val todayTotal = formatDurationDisplay(s.todayTotalSec)

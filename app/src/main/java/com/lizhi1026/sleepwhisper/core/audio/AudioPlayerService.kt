@@ -1,3 +1,21 @@
+/**
+ * 音频播放引擎（Kotlin 单例，非 Android Service）。
+ *
+ * 所在层：core/audio — 应用核心层，不依赖 UI。
+ * ⚠️ 注意：本类是 Kotlin 单例（@Singleton + Hilt 注入），不是 Android Service。
+ *    真正的前台 Service 是 [PlaybackForegroundService]，它持有本类引用并管理生命周期。
+ *
+ * 交互对象：
+ *   - [PlaybackForegroundService]：绑定 MediaSession 并驱动前台通知。
+ *   - [CryDetectionService]：哭声触发时调用 [boostVolumeOnCry]。
+ *   - ViewModel / Composable：通过 [stateLive]、[currentPresetLive]、[timerEndsAtLive] 观察状态。
+ *
+ * 关键约定：
+ *   - ExoPlayer 必须在主线程操作；[boostVolumeOnCry] 内部通过 scope（Main.immediate）保证线程安全。
+ *   - 淡入时长固定 1.5 s，与 iOS 端一致。
+ *   - 播放模式：REPEAT_MODE_ONE（单曲循环）、WAKE_MODE_LOCAL（持锁保活）。
+ *   - 完整实现 AudioFocus + handleAudioBecomingNoisy（耳机拔出/蓝牙断连自动暂停）。
+ */
 package com.lizhi1026.sleepwhisper.core.audio
 
 import android.content.Context

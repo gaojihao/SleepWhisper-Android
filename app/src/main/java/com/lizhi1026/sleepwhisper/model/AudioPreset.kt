@@ -1,3 +1,24 @@
+/**
+ * 音频预设与氛围色彩实体模型。
+ *
+ * **职责**：
+ * - [AuraColors]：定义一个音频预设的三层氛围色（高光色、主色调、深底色），
+ *   用于驱动 AuroraBackdrop 渐变和音频波形颜色。
+ * - [AudioPreset]：描述一个内置音频预设的完整元数据，包含名称键、分类、适用月龄范围、
+ *   资源文件名及氛围色。
+ *
+ * **所在层**：model 层（领域模型），与 iOS `AudioPreset.swift` 字段一一对应。
+ *
+ * **与谁交互**：
+ * - [AudioPlayerService]（core/audio）— 读取 `fileBundleName` 和 `loop` 等字段控制播放。
+ * - [HeroBackdropController]（core/visualkit）— 读取 `auraColors.mid` 更新氛围背景色。
+ * - [AppStateContainer]（app 层）— 通过 `audioPlayer` 间接使用预设。
+ *
+ * **关键约定**：
+ * - 所有预设均为硬编码内置列表（[AudioPreset.bundled]），运行时不从网络或数据库加载。
+ * - `@Transient` 标注的 Compose `Color` 字段不参与序列化，防止未来误将整个预设写入 DataStore。
+ * - 使用 `AudioPreset.byId(id)` 反查预设；找不到时返回 null（调用方需处理缺失情况）。
+ */
 package com.lizhi1026.sleepwhisper.model
 
 import androidx.compose.ui.graphics.Color

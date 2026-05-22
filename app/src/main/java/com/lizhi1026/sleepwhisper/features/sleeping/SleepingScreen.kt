@@ -1,3 +1,16 @@
+/**
+ * SleepingScreen.kt — 睡眠进行中界面（UI 层 / features/sleeping）
+ *
+ * 用途：宝宝进入睡眠后的全屏沉浸式守护页，展示计时器、音频状态卡与唤醒按钮。
+ * 主题：强制使用 [SWScheme.DARK]（深蓝星空调色板），与全局 ThemeProvider 完全解耦，
+ *       确保夜间视觉一致性，不受用户系统深色/浅色模式影响。
+ * 用户交互流程：
+ *   1. 由共享元素动画（MorphingHeroSurface → sleepHeroDestination）过渡进入；
+ *   2. 单击屏幕任意区域切换"调暗（dim）"状态，减弱 UI 干扰；
+ *   3. **长按中央 WakeButton（阈值 = SWMotion.longPressMs）** 才结束睡眠，防误触；
+ *   4. 音频播放时显示 PlayerStatusCard，可点击展开 PlayerSheet；
+ *   5. PausePill 支持暂停 / 继续白噪音播放。
+ */
 package com.lizhi1026.sleepwhisper.features.sleeping
 
 import androidx.compose.animation.core.Animatable
@@ -81,6 +94,16 @@ import com.lizhi1026.sleepwhisper.model.AudioPreset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ * 睡眠进行中的主屏幕 Composable。
+ *
+ * 强制注入 [SWScheme.DARK] 主题，与全局 ThemeProvider 解耦，确保星空调色板始终生效。
+ * 共享元素参数 [sharedScope] / [animScope] 对接 MorphingHeroSurface 的过渡动画。
+ *
+ * @param sharedScope 共享元素动画作用域，由父级 SharedTransitionLayout 提供
+ * @param animScope   AnimatedVisibility 作用域，控制共享元素在本屏的可见性过渡
+ * @param vm          由 Hilt 注入的 [SleepingViewModel]
+ */
 @OptIn(
     androidx.compose.animation.ExperimentalSharedTransitionApi::class
 )
@@ -94,30 +117,30 @@ fun SleepingScreen(
     val playerState by vm.playerState.observeAsState(PlayerState.Idle)
     val baby by vm.baby.observeAsState(null)
 
+    // 当前时刻（毫秒），用于计算已睡时长：elapsedSec = (nowMs - startAt) / 1000
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    // Tick only while the screen is at least STARTED — when the user navigates away or
-    // the system backgrounds the app, the coroutine is cancelled and the per-second
-    // recomposition stops. repeatOnLifecycle re-launches it when we resume.
+    // 计时器心跳：每秒更新 nowMs，仅在生命周期 STARTED 时运行，后台自动暂停
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 nowMs = System.currentTimeMillis()
-                delay(1000)
+                delay(1000) // 1 秒间隔，驱动计时器 recomposition
             }
         }
     }
 
+    // 已睡秒数：会话存在时实时计算，否则为 0（尚未开始）
     val elapsedSec = ongoing?.let { (nowMs - it.startAt) / 1000 } ?: 0L
 
-    // Force DARK scheme regardless of system. Sleeping is an immersive cinematic surface
-    // designed against the dark palette (deep blue starfield, cool glows) — overriding it
-    // with the NIGHT red-light scheme changes the visual identity completely.
+    // 强制 DARK scheme：星空/冷辉光视觉方案，与系统主题解耦
     CompositionLocalProvider(LocalSWScheme provides SWScheme.DARK) {
+        // morphProgress：跟踪英雄共享元素变形进度（0→1），用于星空密度渐变
         val morphProgress by remember(vm.app.morphProgress) {
             derivedStateOf { vm.app.morphProgress.value }
         }
         val morphScope = rememberCoroutineScope()
+        // dimmed：单击屏幕任意处切换调暗状态，减少深夜视觉干扰
         var dimmed by remember { mutableStateOf(false) }
         var showMiniPlayer by remember { mutableStateOf(false) }
         val dimAlpha by animateFloatAsState(
@@ -126,6 +149,7 @@ fun SleepingScreen(
             label = "dim-alpha"
         )
 
+        // 调暗/展开播放器时拦截返回手势，优先收起浮层而非退出页面
         androidx.activity.compose.BackHandler(enabled = dimmed || showMiniPlayer) {
             when {
                 showMiniPlayer -> showMiniPlayer = false
@@ -134,17 +158,13 @@ fun SleepingScreen(
         }
 
         Box(modifier = Modifier.fillMaxSize().background(SWColor.surface(SWScheme.DARK))) {
-            // Star density ramps with morph progress on entry. After the morph settles
-            // (morphProgress = 1), density stays at the full 80. Phase 2 replaces this
-            // with NightSkyCanvas.
+            // 星空画布：morphProgress = 1 时星点密度最大（完整 80 颗）
             NightSkyCanvas(
                 modifier = Modifier.fillMaxSize(),
                 morphProgress = morphProgress
             )
 
-            // Invisible 600dp halo placeholder — anchors the shared element to its
-            // destination position so the Sleep CTA's morph has somewhere to fly to.
-            // Drawn first (under the timer column) so the timer text remains visible.
+            // 共享元素目标锚点（600dp 不可见占位框）：为英雄圆从首页飞入提供落点
             Box(
                 modifier = Modifier
                     .size(600.dp)
@@ -152,19 +172,7 @@ fun SleepingScreen(
                     .sleepHeroDestination(sharedScope, animScope)
             )
 
-            // Anchor the whole stack to the vertical center of the usable area. Earlier
-            // revisions used Spacer(weight 0.5f)/weight(1f) to position the WakeButton at
-            // roughly 1/3 from top — but when the player is Playing the layout adds a
-            // PlayerStatusCard (~60dp) + a 32dp spacer above the button, and on smaller
-            // heights (landscape, multi-window, large font scale) the weighted spacers
-            // collapse to 0 and the 180dp WakeButton was getting pushed off the bottom of
-            // the screen. The only visible remnant was the PulseRing's outward-expanding
-            // arcs (drawn up to 1.8x the canvas size, so they leak beyond the WakeButton
-            // box), producing the "wake button is gone, ripples at the bottom" symptom.
-            // CenterVertically keeps the WakeButton anchored near the screen center no
-            // matter how tall the content above grows; windowInsetsPadding ensures the
-            // edge-to-edge background still applies while keeping content out from under
-            // the status and navigation bars.
+            // 主内容列：以屏幕中心为锚点垂直对齐，避免 WakeButton 在小屏/大字号下溢出底部
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -193,6 +201,7 @@ fun SleepingScreen(
 
                 WakeButton(
                     onWake = {
+                        // 长按完成后：先执行退出形变动画，再调用 ViewModel 结束会话
                         morphScope.launch { vm.app.endSleepMorph() }
                         vm.onWake()
                     }
@@ -212,6 +221,11 @@ fun SleepingScreen(
     }
 }
 
+/**
+ * 标题区域：展示守护文案、宝宝名与"正在做梦"副标题。
+ *
+ * @param babyName 宝宝姓名，用于填入本地化字符串模板
+ */
 @Composable
 private fun TitleSection(babyName: String) {
     Column(
@@ -245,6 +259,14 @@ private fun TitleSection(babyName: String) {
     }
 }
 
+/**
+ * 计时器区域：将已睡秒数格式化并以悬浮动画展示。
+ *
+ * 超过 1 小时切换为 64sp（displayLG），否则使用 96sp（displayXL），两者均为等宽字体。
+ * floatingY 修饰符提供 ±2dp 的轻微浮动动画（周期 8 秒）。
+ *
+ * @param elapsedSec 已睡总秒数，由 Screen 内 LaunchedEffect 每秒计算传入
+ */
 @Composable
 private fun CountdownSection(elapsedSec: Long) {
     val h = (elapsedSec / 3600).toInt()
@@ -265,6 +287,17 @@ private fun CountdownSection(elapsedSec: Long) {
     )
 }
 
+/**
+ * 音频播放状态卡片：仅当 PlayerState 为 Playing 时显示。
+ *
+ * 展示当前预设名称、图标、音波动画及剩余时长（如果有定时）。
+ * 点击卡片展开 PlayerSheet 底部面板。
+ *
+ * @param presetId  当前播放的音频预设 ID
+ * @param endsAt    定时结束时间戳（毫秒），null 表示不限时
+ * @param nowMs     当前时刻（毫秒），用于计算剩余分钟
+ * @param onClick   点击卡片的回调
+ */
 @Composable
 private fun PlayerStatusCard(presetId: String, endsAt: Long?, nowMs: Long, onClick: () -> Unit) {
     val preset = remember(presetId) { AudioPreset.byId(presetId) }
@@ -346,6 +379,16 @@ private fun PlayerStatusCard(presetId: String, endsAt: Long?, nowMs: Long, onCli
     }
 }
 
+/**
+ * 唤醒按钮（中央长按按钮）：防误触设计，必须持续长按满 [SWMotion.longPressMs] 毫秒才触发结束睡眠。
+ *
+ * 视觉层：外层 PulseRing（脉冲涟漪）→ LiquidProgressRing（液态进度环，随长按充填）→
+ *         内层 112dp 渐变圆形按钮。
+ * 交互：按下时启动 fillProgress 动画，松手若未达 0.99 则弹回 0；
+ *       达到后等待 420ms（弹跳缓冲）再回调 onWake。
+ *
+ * @param onWake 长按完成后的回调，由父级触发形变动画并调用 ViewModel
+ */
 @Composable
 private fun WakeButton(onWake: () -> Unit) {
     val fillProgress = remember { Animatable(0f) }
@@ -360,13 +403,14 @@ private fun WakeButton(onWake: () -> Unit) {
                     while (true) {
                         val down = awaitPointerEvent(PointerEventPass.Main)
                         if (down.changes.any { it.pressed }) {
+                            // 手指按下：开始填充动画，时长 = longPressMs
                             val job = scope.launch {
                                 fillProgress.animateTo(
                                     1f,
                                     tween(durationMillis = SWMotion.longPressMs.toInt())
                                 )
                                 if (fillProgress.value >= 0.99f) {
-                                    delay(420)
+                                    delay(420) // 弹跳缓冲，给 LiquidProgressRing 留完成感
                                     onWake()
                                 }
                             }
@@ -374,6 +418,7 @@ private fun WakeButton(onWake: () -> Unit) {
                                 val ev = awaitPointerEvent(PointerEventPass.Main)
                                 if (ev.changes.all { !it.pressed }) {
                                     if (fillProgress.value < 0.99f) {
+                                        // 提前松手：取消动画并弹回 0
                                         job.cancel()
                                         scope.launch { fillProgress.animateTo(0f, tween(200)) }
                                     }
@@ -410,6 +455,12 @@ private fun WakeButton(onWake: () -> Unit) {
     }
 }
 
+/**
+ * 暂停 / 继续胶囊按钮：半透明毛玻璃样式，音频播放时显示"暂停"，暂停时显示"继续"。
+ *
+ * @param label   按钮文字（由调用方传入本地化字符串）
+ * @param onClick 点击回调
+ */
 @Composable
 private fun PausePill(label: String, onClick: () -> Unit) {
     Box(

@@ -5,23 +5,40 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * Gradient tokens — direct port of iOS Core/VisualKit/Gradients.swift.
- * Returns Brush.linearGradient with explicit start/end points (Float.POSITIVE_INFINITY = full extent).
+ * visualkit 渐变 token 层（Aurora 重设计 Phase 0）。
+ *
+ * 职责：将所有 UI 渐变集中定义，按 [SWScheme] 返回对应 [Brush]。
+ * 与 [SWColor] 分离，避免在 Composable 层内联构造 Brush，便于主题统一切换。
+ *
+ * 方向约定：
+ *  - `topToBottom`           — 上→下线性（`start = (0,0)` → `end = (0, ∞)`）
+ *  - `topLeftToBottomRight`  — 左上→右下对角（`end = (∞, ∞)`）
+ *  - 径向渐变由各函数内直接构造（`Brush.radialGradient`）
+ *
+ * 调用方：AuroraBackdrop、HeroSection、CardList、PlayerScreen。
  */
 object SWGradient {
 
+    /** 上→下线性渐变，均匀色标。 */
     private fun topToBottom(colors: List<Color>): Brush =
         Brush.linearGradient(colors = colors, start = Offset(0f, 0f), end = Offset(0f, Float.POSITIVE_INFINITY))
 
+    /** 上→下线性渐变，自定义色标位置（0f~1f）。 */
     private fun topToBottomStops(colorStops: Array<Pair<Float, Color>>): Brush =
         Brush.linearGradient(colorStops = colorStops, start = Offset(0f, 0f), end = Offset(0f, Float.POSITIVE_INFINITY))
 
+    /** 左上→右下对角渐变，均匀色标。 */
     private fun topLeftToBottomRight(colors: List<Color>): Brush =
         Brush.linearGradient(colors = colors, start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
 
+    /** 左上→右下对角渐变，自定义色标位置。 */
     private fun topLeftToBottomRightStops(colorStops: Array<Pair<Float, Color>>): Brush =
         Brush.linearGradient(colorStops = colorStops, start = Offset(0f, 0f), end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY))
 
+    /**
+     * 页面底层背景渐变——对应 [SWColor.surface] 的渐变版本。
+     * DAY 微妙上→下，DARK/NIGHT 三停对角以增加深度感。
+     */
     fun surface(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> topToBottom(listOf(
             Color(0.984f, 0.984f, 0.988f),
@@ -39,6 +56,10 @@ object SWGradient {
         ))
     }
 
+    /**
+     * 主色渐变——暮光橙上→下，用于主要按钮填充、进度条轨道。
+     * DARK/NIGHT 切换为低饱和蓝调/暗红调以保护夜视。
+     */
     fun primary(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> topToBottom(listOf(
             Color(1.00f, 0.60f, 0.46f), Color(0.96f, 0.47f, 0.33f)
@@ -51,6 +72,10 @@ object SWGradient {
         ))
     }
 
+    /**
+     * 强调渐变——左上→右下对角，用于图标背景、高亮装饰块。
+     * 与 [primary] 同色系但方向不同，形成视觉层次对比。
+     */
     fun accent(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> topLeftToBottomRight(listOf(
             Color(1.00f, 0.60f, 0.46f), Color(0.96f, 0.47f, 0.33f)
@@ -63,6 +88,10 @@ object SWGradient {
         ))
     }
 
+    /**
+     * 卡片遮罩渐变——叠加在卡片内容顶部，增强文字可读性。
+     * DAY 完全透明（卡片背景已足够对比），DARK/NIGHT 用细微白色玻璃光。
+     */
     fun cardOverlay(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> topToBottom(listOf(Color.Transparent, Color.Transparent))
         SWScheme.DARK, SWScheme.NIGHT -> topToBottom(listOf(
@@ -71,14 +100,14 @@ object SWGradient {
     }
 
     /**
-     * Aurora backdrop — multi-stop diagonal ribbon. The base layer used by
-     * AuroraBackdrop. Three of these are stacked at different phases.
+     * Aurora 光晕幕布——多停对角彩带，AuroraBackdrop 的底层图层，三层叠加时相位错开。
+     * DAY 为暖米白→晨雾粉→淡紫，DARK/NIGHT 为深蓝→深紫层次。
      */
     fun auroraBackdrop(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> topLeftToBottomRightStops(arrayOf(
             0.0f to Color(0xFFF4F2EE),
-            0.5f to Color(0xFFFAE9DC),  // dawn whisper
-            1.0f to Color(0xFFEFE4F2)   // lilac whisper
+            0.5f to Color(0xFFFAE9DC),  // 晨雾桃：日间 Aurora 暖调中停
+            1.0f to Color(0xFFEFE4F2)   // 淡紫：与星光紫主轴呼应
         ))
         SWScheme.DARK -> topLeftToBottomRightStops(arrayOf(
             0.0f to Color(0xFF07101F),
@@ -94,15 +123,15 @@ object SWGradient {
     }
 
     /**
-     * Aurora glow — radial purple→orange. For hero CTAs and now-playing accents.
-     * Returns a radial brush from the natural drawing center.
+     * Aurora 辉光——径向紫→橙渐变，用于 Hero CTA 按钮光晕、正在播放时的氛围光圈。
+     * 从绘制中心向外扩散，外边缘 alpha=0 自然消隐。
      */
     fun auroraGlow(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> Brush.radialGradient(
             colors = listOf(Color(0xFFFFB088), Color(0xFFB8A4FF).copy(alpha = 0f))
         )
         SWScheme.DARK -> Brush.radialGradient(
-            colors = listOf(Color(0xFFB8A4FF), Color(0xFFFFB088).copy(alpha = 0f))
+            colors = listOf(Color(0xFFB8A4FF), Color(0xFFFFB088).copy(alpha = 0f)) // 星光紫→橙消隐
         )
         SWScheme.NIGHT -> Brush.radialGradient(
             colors = listOf(Color(0.78f, 0.45f, 0.45f), Color(0.55f, 0.28f, 0.28f, alpha = 0f))
@@ -110,15 +139,15 @@ object SWGradient {
     }
 
     /**
-     * Moon halo — soft white-silver radial used as an inner highlight on cards
-     * on dark schemes. On DAY, returns near-transparent so callers can ignore.
+     * 月光晕圈——柔白银径向渐变，叠加于卡片内侧顶部，模拟深色模式下的内光效果。
+     * DAY 几乎透明，可被调用方忽略；DARK/NIGHT 呈现月光银质感。
      */
     fun moonHalo(scheme: SWScheme): Brush = when (scheme) {
         SWScheme.DAY -> Brush.radialGradient(
             colors = listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)
         )
         SWScheme.DARK -> Brush.radialGradient(
-            colors = listOf(Color(0xFFECF2F8).copy(alpha = 0.18f), Color.Transparent)
+            colors = listOf(Color(0xFFECF2F8).copy(alpha = 0.18f), Color.Transparent) // 月光银内晕
         )
         SWScheme.NIGHT -> Brush.radialGradient(
             colors = listOf(Color(1.00f, 0.75f, 0.75f).copy(alpha = 0.08f), Color.Transparent)

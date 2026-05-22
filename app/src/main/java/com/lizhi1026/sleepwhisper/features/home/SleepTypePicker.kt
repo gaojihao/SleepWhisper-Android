@@ -31,8 +31,15 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.model.SleepSession.SleepType
 
 /**
- * Bottom overlay for choosing a SleepType — port of iOS SleepTypePicker.swift.
- * Highlights the [suggestedType] with a badge.
+ * 睡眠类型选择底部弹层（features/home 层）
+ *
+ * 职责：
+ * - 展示三种睡眠类型（小睡 NAP、夜睡 NIGHT、接觉 CONTACT_NAP）供用户选择。
+ * - [suggestedType] 由 `AppStateContainer.defaultSleepType()` 根据当前时间推断，
+ *   推荐项以 accent 渐变高亮并附"推荐"徽章。
+ * - 用户选择后回调 [onPick]，由 HomeViewModel.onPickSleepType() 委托给 AppStateContainer.startSleep(type)。
+ * - 点击背景遮罩触发 [onDismiss]，不做任何睡眠记录。
+ * - 对应 iOS SleepTypePicker.swift。
  */
 @Composable
 fun SleepTypePicker(
@@ -78,6 +85,7 @@ fun SleepTypePicker(
                     text = stringResource(R.string.sleeptype_picker_subtitle),
                     style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
                 )
+                // 三种睡眠类型行，推荐项高亮；选择后立即回调并关闭弹层
                 SleepTypeRow(
                     SleepType.NAP, R.string.sleeptype_nap_title, R.string.sleeptype_nap_sub,
                     suggested = SleepType.NAP == suggestedType,
@@ -98,6 +106,15 @@ fun SleepTypePicker(
     }
 }
 
+/**
+ * 睡眠类型选项行。
+ *
+ * @param type 该行对应的 SleepType 枚举值。
+ * @param titleRes 主标题字符串资源 ID。
+ * @param subRes 副标题字符串资源 ID。
+ * @param suggested 是否为推荐类型，true 时以 accent 渐变高亮并显示"推荐"徽章。
+ * @param onPick 用户点击该行后回调，携带对应的 [SleepType]。
+ */
 @Composable
 private fun SleepTypeRow(
     type: SleepType,
@@ -111,6 +128,7 @@ private fun SleepTypeRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(SWRadius.md))
+            // 推荐项：accent 渐变背景；普通项：下沉表面纯色背景
             .background(if (suggested) SWGradient.accent(scheme) else androidx.compose.ui.graphics.Brush.linearGradient(listOf(SWColor.surfaceSunken(scheme), SWColor.surfaceSunken(scheme))))
             .clickable { onPick(type) }
             .padding(SWSpacing.md),
@@ -126,6 +144,7 @@ private fun SleepTypeRow(
                 style = SWFont.labelMD().copy(color = if (suggested) Color.White.copy(alpha = 0.85f) else SWColor.textSecondary(scheme))
             )
         }
+        // 仅推荐项展示"推荐"徽章
         if (suggested) {
             BasicText(
                 text = stringResource(R.string.sleeptype_badge_suggested),

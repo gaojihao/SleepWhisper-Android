@@ -23,8 +23,10 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
 import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButtonStyle
 
+/** 提示条目：标题与正文均使用字符串资源 ID，支持多语言。 */
 private data class Hint(val titleRes: Int, val bodyRes: Int)
 
+/** 三条新手提示：启动睡眠、清醒窗口、AI 助手。 */
 private val HINTS = listOf(
     Hint(R.string.hint_startsleep_title, R.string.hint_startsleep_body),
     Hint(R.string.hint_window_title, R.string.hint_window_body),
@@ -32,8 +34,13 @@ private val HINTS = listOf(
 )
 
 /**
- * Inline 3-page hints card shown on Home — port of iOS OnboardingHintsCard.swift.
- * User taps Next to advance pages, "I'm ready" on the final page to dismiss.
+ * 首页嵌入式新手引导卡片（features/home 层）
+ *
+ * 职责：
+ * - 以内联卡片形式展示 3 页新手提示（启动睡眠、清醒窗口、AI 助手），用户可逐页翻看。
+ * - 最后一页按钮文案变为"我准备好了"，点击后回调 [onDismiss]；
+ *   HomeViewModel 接收后调用 AppStateContainer.markHintsSeen() 永久隐藏。
+ * - 对应 iOS OnboardingHintsCard.swift。
  */
 @Composable
 fun OnboardingHintsCard(
@@ -41,6 +48,7 @@ fun OnboardingHintsCard(
     modifier: Modifier = Modifier
 ) {
     val scheme = LocalSWScheme.current
+    // 当前页索引，从 0 开始
     var page by remember { mutableIntStateOf(0) }
     val hint = HINTS[page]
     val isLast = page == HINTS.lastIndex
@@ -67,6 +75,7 @@ fun OnboardingHintsCard(
                 SoftButton(
                     text = if (isLast) stringResource(R.string.common_imready)
                            else stringResource(R.string.common_next),
+                    // 最后一页：触发 onDismiss 并标记已读；其他页：翻到下一页
                     onClick = { if (isLast) onDismiss() else page += 1 },
                     style = if (isLast) SoftButtonStyle.PRIMARY else SoftButtonStyle.GHOST
                 )

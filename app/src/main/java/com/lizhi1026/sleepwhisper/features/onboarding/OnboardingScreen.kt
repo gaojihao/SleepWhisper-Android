@@ -1,3 +1,16 @@
+/**
+ * OnboardingScreen.kt — 首次使用时的宝宝信息录入界面（UI 层 / features/onboarding）
+ *
+ * 用途：引导用户填写宝宝基本信息以完成初始化设置，是应用进入主流程的前置单页表单。
+ * 布局：**单页表单，无分步索引**，包含宝宝名字输入、生日选择（DatePickerDialog）、
+ *       性别选择（可选，默认 UNKNOWN）三个字段，CTA 按钮固定于底部。
+ * 用户交互流程：
+ *   1. 用户填写宝宝名字（文本输入框）；
+ *   2. 点击日期行任意位置弹出系统 DatePickerDialog，选择生日（不可超今天）；
+ *   3. 性别通过 SWSegmentedPicker 选择（可选）；
+ *   4. name 合法 && dobMs != null && dobMs <= now 时 isValid = true，CTA 按钮激活；
+ *   5. 点击提交 → ViewModel.submit()，AppStateContainer.baby 变化驱动导航离开本页。
+ */
 package com.lizhi1026.sleepwhisper.features.onboarding
 
 import android.app.DatePickerDialog
@@ -62,6 +75,11 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Onboarding 入口 Composable：从 ViewModel 读取状态并转发给无状态的 [OnboardingContent]。
+ *
+ * @param vm 由 Hilt 注入的 [OnboardingViewModel]
+ */
 @Composable
 fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     val name by vm.name.observeAsState("")
@@ -81,6 +99,11 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     )
 }
 
+/**
+ * Onboarding 表单的无状态内容层，便于预览和测试。
+ *
+ * 单页布局（无分步索引）：名字输入 + 生日选择 + 性别选择，CTA 钉在底部。
+ */
 @Composable
 private fun OnboardingContent(
     name: String,
@@ -96,6 +119,7 @@ private fun OnboardingContent(
     val ctx = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
+    // 本地函数：弹出系统 DatePickerDialog；最大日期限制为今天，防止选未来日期
     fun openDatePicker() {
         val cal = Calendar.getInstance().apply {
             timeInMillis = dob ?: (System.currentTimeMillis() - 90L * 86_400_000L)
@@ -244,6 +268,12 @@ private fun OnboardingContent(
     }
 }
 
+/**
+ * 带标签的表单字段容器，将标签与具体输入控件垂直排列。
+ *
+ * @param label   字段标签文字
+ * @param content 实际输入控件（InputBox、SWSegmentedPicker 等）
+ */
 @Composable
 private fun Field(label: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(SWSpacing.xs)) {

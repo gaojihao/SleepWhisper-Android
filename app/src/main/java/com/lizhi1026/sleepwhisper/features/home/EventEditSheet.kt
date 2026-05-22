@@ -45,11 +45,16 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Edit sheet for an existing Feeding / Diaper event — port of iOS EventEditSheet.swift.
- * Picks a new occurredAt timestamp and (for bottle feeds) a new amount in ml.
+ * 事件编辑底部弹层（features/home 层）
  *
- * Caller observes [com.lizhi1026.sleepwhisper.app.AppStateContainer.pendingEditTarget] and
- * dismisses by invoking [onDismiss] when save / cancel completes.
+ * 职责：
+ * - 编辑已有的喂养（Feeding）或换尿片（Diaper）事件的时间戳；奶瓶喂养额外支持修改毫升数。
+ * - [target] 为密封类 [EventEditTarget]，携带待编辑的原始事件数据。
+ * - 保存时分别回调 [onSaveFeeding] / [onSaveDiaper]，并附带 `isEdited = true` 标记；
+ *   调用方（通常是 Trends 页）负责将结果写入 AppStateContainer。
+ * - 时间选择器使用系统原生 DatePickerDialog + TimePickerDialog 两步联动。
+ *
+ * 对应 iOS EventEditSheet.swift。
  */
 @Composable
 fun EventEditSheet(
@@ -61,6 +66,7 @@ fun EventEditSheet(
     val scheme = LocalSWScheme.current
     val ctx = LocalContext.current
 
+    // 根据事件类型提取初始时间戳和初始奶量
     val initialTime: Long = when (target) {
         is EventEditTarget.Feeding -> target.event.startedAt
         is EventEditTarget.Diaper -> target.event.occurredAt
@@ -70,6 +76,7 @@ fun EventEditSheet(
         else -> 0
     }
 
+    // target 变化（用户打开不同事件）时重置编辑状态
     var time by remember(target) { mutableLongStateOf(initialTime) }
     var amount by remember(target) { mutableIntStateOf(initialAmount) }
 
@@ -93,7 +100,7 @@ fun EventEditSheet(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = {} // swallow taps on card body
+                    onClick = {}  // 吞掉卡片内部的点击事件，防止触发背景遮罩的关闭逻辑
                 ),
             elevation = ElevationLevel.STRONG
         ) {
@@ -130,6 +137,7 @@ fun EventEditSheet(
                 }
 
                 if (target is EventEditTarget.Feeding && target.event.method == FeedingEvent.FeedingMethod.BOTTLE) {
+                    // 仅奶瓶喂养才显示毫升数调节器
                     Column {
                         BasicText(
                             text = stringResource(R.string.event_edit_bottlestepper, amount),
@@ -168,6 +176,7 @@ fun EventEditSheet(
                     SoftButton(
                         text = stringResource(R.string.common_save),
                         onClick = {
+                            // 根据事件类型分别 copy 并回调，非奶瓶喂养保留原有奶量
                             when (target) {
                                 is EventEditTarget.Feeding -> onSaveFeeding(
                                     target.event.copy(
@@ -190,6 +199,17 @@ fun EventEditSheet(
     }
 }
 
+/**
+ * 调出系统原生日期+时间选择器（两步联动）。
+ *
+ * 先弹出 DatePickerDialog 选日期，确认后立即弹出 TimePickerDialog 选时分，
+ * 两步均完成后将合并的毫秒时间戳通过 [onPicked] 回调。
+ * 日期选择器限制最大日期为今天（不允许选未来）。
+ *
+ * @param ctx Android Context，用于创建系统对话框。
+ * @param initialMs 初始时间戳（毫秒），对话框打开时预选此时间。
+ * @param onPicked 选择完成的毫秒时间戳回调。
+ */
 private fun pickDateTime(
     ctx: android.content.Context,
     initialMs: Long,
@@ -212,13 +232,13 @@ private fun pickDateTime(
                 },
                 date.get(Calendar.HOUR_OF_DAY),
                 date.get(Calendar.MINUTE),
-                true
+                true // 使用 24 小时制
             ).show()
         },
         cal.get(Calendar.YEAR),
         cal.get(Calendar.MONTH),
         cal.get(Calendar.DAY_OF_MONTH)
     ).apply {
-        datePicker.maxDate = System.currentTimeMillis()
+        datePicker.maxDate = System.currentTimeMillis() // 禁止选择未来日期
     }.show()
 }

@@ -44,15 +44,24 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.ElevationLevel
 import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.innerHighlight
 
-/** Tile tint — port of iOS QuickActionTile tint cases. */
+/** 瓦片色调枚举，对应 iOS QuickActionTile tint 枚举。 */
 enum class TileTint { PEACH, MINT, LILAC }
 
 /**
- * Square quick-action tile — port of iOS Features/Home/QuickActionTile.swift.
+ * 首页快捷操作瓦片（features/home 层）
  *
- * Layout: 40dp tinted icon circle + labelMD, vertically stacked inside a GlassCard.
- * Wraps content height so the label is never clipped (was previously fixed at 70dp +
- * 16dp padding, which only left 38dp for the 44dp icon and pushed the label off-screen).
+ * 职责：
+ * - 正方形瓦片：36dp 色调图标圆圈 + 标签文本，垂直堆叠于 GlassCard 内。
+ * - 支持单击（[onTap]）与可选长按（[onLongPress]），并附有无障碍语义。
+ * - 按下时以 `animateFloatAsState` 实现 0.97 缩放弹性反馈。
+ * - 对应 iOS Features/Home/QuickActionTile.swift。
+ *
+ * @param label 瓦片显示标签，同时作为无障碍 contentDescription。
+ * @param tint 图标背景色调，决定背景色与图标颜色（PEACH/MINT/LILAC）。
+ * @param iconRes drawable 图标资源 ID。
+ * @param onTap 单击回调，通常触发 ViewModel 记录事件。
+ * @param onLongPress 可选长按回调，为 null 时不注册长按语义。
+ * @param modifier 外部传入的 Modifier（通常含 weight(1f)）。
  */
 @Composable
 fun QuickActionTile(
@@ -64,19 +73,22 @@ fun QuickActionTile(
     modifier: Modifier = Modifier
 ) {
     val scheme = LocalSWScheme.current
+    // 按下状态，用于驱动缩放动画
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.97f else 1f,
         animationSpec = tween(SWMotion.pressInMs),
         label = "tile-scale"
     )
+    // 根据色调映射图标圆圈背景色
     val tintBg = when (tint) {
         TileTint.PEACH -> SWColor.softPeach(scheme)
         TileTint.MINT -> SWColor.softMint(scheme)
         TileTint.LILAC -> SWColor.softLilac(scheme)
     }
+    // 根据色调映射图标前景色
     val iconTint = when (tint) {
-        TileTint.PEACH -> SWColor.danger(scheme)    // warm coral, reads well over peach
+        TileTint.PEACH -> SWColor.danger(scheme)    // 暖珊瑚色，在桃色背景上对比度好
         TileTint.MINT -> SWColor.success(scheme)
         TileTint.LILAC -> SWColor.primary(scheme)
     }
