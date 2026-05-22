@@ -4,6 +4,12 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## Project orientation
+
+- **Code map**: [`docs/CODE_MAP.md`](docs/CODE_MAP.md) — package/file index, who depends on whom.
+- **Architecture**: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, data flow, conventions, common-change recipes.
+- Read both before non-trivial changes. `AppStateContainer` is the global facade and the most common entry point for business changes.
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

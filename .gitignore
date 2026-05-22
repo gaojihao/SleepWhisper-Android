@@ -15,4 +15,6 @@
 local.properties
 .kotlin/
 .idea/
-docs/
+docs/**
+!docs/CODE_MAP.md
+!docs/ARCHITECTURE.md
