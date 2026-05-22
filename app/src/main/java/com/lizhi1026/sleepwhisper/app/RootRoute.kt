@@ -64,7 +64,6 @@ import com.lizhi1026.sleepwhisper.features.home.EventEditSheet
 import com.lizhi1026.sleepwhisper.features.home.HomeScreen
 import com.lizhi1026.sleepwhisper.features.onboarding.OnboardingScreen
 import com.lizhi1026.sleepwhisper.features.onboarding.WelcomeRitualScreen
-import com.lizhi1026.sleepwhisper.features.player.PlayerScreen
 import com.lizhi1026.sleepwhisper.features.settings.SettingsScreen
 import com.lizhi1026.sleepwhisper.features.sleeping.SleepSummaryOverlay
 import com.lizhi1026.sleepwhisper.features.sleeping.SleepingScreen
@@ -197,12 +196,10 @@ private fun MainScaffold(
             when (tab) {
                 0 -> HomeScreen(
                     sharedScope = sharedScope,
-                    animScope = animScope,
-                    onOpenPlayer = { tab = 3 }
+                    animScope = animScope
                 )
                 1 -> TrendsScreen()
                 2 -> SettingsScreen()
-                3 -> PlayerScreen()
             }
         }
         BottomTabs(tab) { tab = it }

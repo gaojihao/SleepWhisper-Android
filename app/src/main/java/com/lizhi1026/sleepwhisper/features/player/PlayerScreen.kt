@@ -93,8 +93,10 @@ fun PlayerScreen(
             AuroraBackdrop()
         }
         Column(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                DragHandle()
+            if (!embedded) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    DragHandle()
+                }
             }
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(horizontal = SWSpacing.lg),

@@ -255,20 +255,26 @@ class AudioPlayerService @Inject constructor(
 
     /** Called externally (e.g. CryDetectionService) when a cry is detected. */
     fun boostVolumeOnCry() {
-        when (_state.value) {
-            is PlayerState.Playing -> {
-                player?.volume = 1f
-            }
-            is PlayerState.FadingOut -> {
-                // Cancel the fade-out, restore to full volume, transition back to Playing.
-                fadeJob?.cancel()
-                player?.volume = 1f
-                val preset = _currentPreset.value ?: return
-                _state.value = PlayerState.Playing(preset.id, _timerEndsAt.value)
-            }
-            else -> {
-                val id = _currentPreset.value?.id ?: return
-                play(id, null)
+        // CryDetectionService.sampleLoop runs on Dispatchers.IO (it owns a blocking
+        // AudioRecord.read), but ExoPlayer requires all access from the thread it was
+        // built on — main. Hop via scope (Main.immediate), so same-thread callers still
+        // run synchronously and IO-thread callers get safely dispatched to main.
+        scope.launch {
+            when (_state.value) {
+                is PlayerState.Playing -> {
+                    player?.volume = 1f
+                }
+                is PlayerState.FadingOut -> {
+                    // Cancel the fade-out, restore to full volume, transition back to Playing.
+                    fadeJob?.cancel()
+                    player?.volume = 1f
+                    val preset = _currentPreset.value ?: return@launch
+                    _state.value = PlayerState.Playing(preset.id, _timerEndsAt.value)
+                }
+                else -> {
+                    val id = _currentPreset.value?.id ?: return@launch
+                    play(id, null)
+                }
             }
         }
     }

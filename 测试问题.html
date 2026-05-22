@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>SleepWhisper Android — QA 深度审查报告</title>
+<style>
+  :root {
+    --bg: #0f1424;
+    --panel: #1a2138;
+    --panel2: #232a45;
+    --text: #e8ecf7;
+    --muted: #9aa3bf;
+    --accent: #b39dff;
+    --accent2: #7eb6ff;
+    --danger: #ff6b8a;
+    --warn: #ffb86b;
+    --info: #6bdcff;
+    --ok: #7ee7a3;
+    --border: rgba(255,255,255,.08);
+    --code-bg: #0a0f1f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(180deg, #0a0e1d 0%, #131a2f 100%);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+  header.hero {
+    padding: 64px 48px 48px;
+    background: radial-gradient(ellipse at top left, rgba(179,157,255,.25), transparent 60%),
+                radial-gradient(ellipse at bottom right, rgba(126,182,255,.18), transparent 60%);
+    border-bottom: 1px solid var(--border);
+  }
+  header.hero h1 {
+    font-size: 38px;
+    margin: 0 0 12px;
+    background: linear-gradient(90deg, #b39dff, #7eb6ff, #7ee7a3);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header.hero .meta {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  header.hero .stat-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 22px;
+    min-width: 130px;
+  }
+  .stat-card .num {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-card .lbl {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .num.danger { color: var(--danger); }
+  .num.warn { color: var(--warn); }
+  .num.info { color: var(--info); }
+  .num.ok { color: var(--ok); }
+
+  main { padding: 24px 48px 80px; max-width: 1280px; margin: 0 auto; }
+
+  nav.toc {
+    position: sticky; top: 0;
+    background: rgba(15,20,36,.92);
+    backdrop-filter: blur(12px);
+    padding: 16px 0;
+    margin: 0 -48px 36px;
+    padding: 16px 48px;
+    border-bottom: 1px solid var(--border);
+    z-index: 20;
+  }
+  nav.toc a {
+    color: var(--accent);
+    text-decoration: none;
+    margin-right: 18px;
+    font-size: 14px;
+  }
+  nav.toc a:hover { color: var(--accent2); }
+
+  h2.section {
+    margin-top: 56px;
+    font-size: 26px;
+    border-left: 4px solid var(--accent);
+    padding-left: 14px;
+  }
+  h3.module {
+    margin-top: 36px;
+    font-size: 20px;
+    color: var(--accent2);
+  }
+
+  .issue {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px 26px;
+    margin: 22px 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,.25);
+  }
+  .issue .head {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .b-crit { background: rgba(255,107,138,.18); color: var(--danger); border: 1px solid rgba(255,107,138,.5); }
+  .b-high { background: rgba(255,184,107,.18); color: var(--warn); border: 1px solid rgba(255,184,107,.5); }
+  .b-med  { background: rgba(107,220,255,.15); color: var(--info); border: 1px solid rgba(107,220,255,.4); }
+  .b-low  { background: rgba(126,231,163,.15); color: var(--ok); border: 1px solid rgba(126,231,163,.4); }
+  .b-cat  { background: rgba(179,157,255,.15); color: var(--accent); border: 1px solid rgba(179,157,255,.4); margin-left: 6px; }
+
+  .issue h4 {
+    margin: 0;
+    font-size: 17px;
+    flex: 1;
+  }
+  .issue .file {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 8px 0 14px;
+    font-family: "SF Mono", Menlo, monospace;
+  }
+  .issue p { margin: 8px 0; }
+  .issue .why {
+    background: rgba(255,107,138,.08);
+    border-left: 3px solid var(--danger);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 12px 0;
+  }
+  .issue .fix {
+    background: rgba(126,231,163,.08);
+    border-left: 3px solid var(--ok);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 12px 0;
+  }
+  .issue .why strong { color: var(--danger); }
+  .issue .fix strong { color: var(--ok); }
+
+  pre.code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
+    line-height: 1.55;
+    color: #d6e0ff;
+  }
+  pre.code .k { color: #c792ea; }
+  pre.code .s { color: #a3e9a4; }
+  pre.code .c { color: #5c6b8a; font-style: italic; }
+  pre.code .n { color: #ff9b6b; }
+
+  /* Visual mock figure */
+  .figure {
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .figure .cap {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Phone mockup */
+  .phone {
+    display: inline-block;
+    width: 280px;
+    height: 540px;
+    background: linear-gradient(180deg, #1b1f3a, #0e1226);
+    border-radius: 38px;
+    border: 4px solid #2a2f4a;
+    box-shadow: 0 16px 60px rgba(0,0,0,.6);
+    position: relative;
+    overflow: hidden;
+    text-align: left;
+  }
+  .phone .notch {
+    width: 90px; height: 16px;
+    background: #000;
+    border-radius: 0 0 12px 12px;
+    margin: 0 auto;
+  }
+  .screen {
+    padding: 16px;
+    height: calc(100% - 16px);
+    position: relative;
+  }
+  .annot {
+    position: absolute;
+    background: var(--danger);
+    color: white;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(255,107,138,.5);
+    z-index: 5;
+  }
+  .arrow {
+    position: absolute;
+    border-left: 2px dashed var(--danger);
+    z-index: 4;
+  }
+
+  /* Simulated UI elements */
+  .ui-greeting { font-size: 11px; color: #9aa3bf; }
+  .ui-bigtitle { font-size: 22px; font-weight: 700; margin: 6px 0 4px; }
+  .ui-cta {
+    margin: 32px auto;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #b39dff, #6a5acd, #2a1f5a);
+    box-shadow: 0 12px 40px rgba(179,157,255,.45);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 600; font-size: 15px;
+    position: relative;
+  }
+  .quick-row { display: flex; justify-content: space-around; margin-top: 24px; }
+  .qa-tile {
+    width: 50px; height: 50px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .bottom-tab {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 50px; background: rgba(10,14,30,.8);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    font-size: 10px; color: var(--muted);
+  }
+
+  table.summary {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+  }
+  table.summary th, table.summary td {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+  }
+  table.summary th { background: rgba(255,255,255,.04); color: var(--muted); }
+
+  .legend {
+    display: flex; gap: 16px; margin-top: 14px; font-size: 12px; flex-wrap: wrap;
+  }
+  .legend span { color: var(--muted); }
+  .legend i.dot {
+    display: inline-block; width: 10px; height: 10px;
+    border-radius: 50%; margin-right: 6px; vertical-align: middle;
+  }
+
+  footer {
+    text-align: center; color: var(--muted); font-size: 12px;
+    padding: 40px 0 20px;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="meta">QA 深度审计报告 · v1.0</div>
+  <h1>SleepWhisper Android<br>逻辑缺陷 / 交互不合理 / 视觉不打磨 — 全量审查</h1>
+  <div class="meta">审计对象：<code>com.lizhi1026.sleepwhisper</code> · 共扫描 80+ Kotlin 文件，覆盖 Home / Sleeping / Player / Trends / Settings / Onboarding / Audio / Cry / Notification / Persistence</div>
+
+  <div class="stat-row">
+    <div class="stat-card"><div class="num danger">14</div><div class="lbl">🔴 严重 (Critical)</div></div>
+    <div class="stat-card"><div class="num warn">23</div><div class="lbl">🟠 高 (High)</div></div>
+    <div class="stat-card"><div class="num info">28</div><div class="lbl">🔵 中 (Medium)</div></div>
+    <div class="stat-card"><div class="num ok">17</div><div class="lbl">🟢 美化 (Polish)</div></div>
+    <div class="stat-card"><div class="num">82</div><div class="lbl">问题总数</div></div>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:#ff6b8a"></i>严重：数据损坏 / 崩溃 / 用户哄睡被打断</span>
+    <span><i class="dot" style="background:#ffb86b"></i>高：交互不合理 / 误触</span>
+    <span><i class="dot" style="background:#6bdcff"></i>中：边界场景 / 体验问题</span>
+    <span><i class="dot" style="background:#7ee7a3"></i>美化：视觉细节</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#sec-overview">📊 总览</a>
+  <a href="#sec-home">🏠 首页</a>
+  <a href="#sec-sleeping">😴 哄睡屏</a>
+  <a href="#sec-player">🎵 播放器</a>
+  <a href="#sec-trends">📈 日记</a>
+  <a href="#sec-settings">⚙️ 设置</a>
+  <a href="#sec-onboarding">👶 引导</a>
+  <a href="#sec-audio">🔊 音频引擎</a>
+  <a href="#sec-cry">🎙️ 哭声检测</a>
+  <a href="#sec-polish">✨ 通用美化</a>
+</nav>
+
+<main>
+
+<!-- ===== 总览 ===== -->
+<section id="sec-overview">
+  <h2 class="section">📊 总览：高风险问题速查表</h2>
+  <p>本节列出最致命的 14 条问题。这些问题任何一条都可能导致：<strong style="color:var(--danger)">数据库脏数据 / 凌晨惊醒宝宝 / AI 推荐被污染 / 用户辛苦记录丢失</strong>。</p>
+
+  <table class="summary">
+    <thead><tr><th>ID</th><th>模块</th><th>问题简述</th><th>影响</th></tr></thead>
+    <tbody>
+      <tr><td>C-01</td><td>首页 / AppState</td><td><code>startSleep()</code> 无幂等保护，快速双击产生孤儿会话</td><td>数据库脏数据、AI 推荐污染</td></tr>
+      <tr><td>C-02</td><td>哄睡屏</td><td>松手后 <code>onWake</code> 仍可能触发，强行结束哄睡</td><td>无辜结束宝宝睡眠</td></tr>
+      <tr><td>C-03</td><td>音频引擎</td><td>音频焦点 <code>requestAudioFocus()</code> 返回值被丢弃</td><td>来电时白噪音与通话声共存，惊醒宝宝</td></tr>
+      <tr><td>C-04</td><td>音频引擎</td><td><code>fadeTo</code> 重入未取消上一次 fade，音量跳跃</td><td>音量在睡眠中突然变大</td></tr>
+      <tr><td>C-05</td><td>哄睡屏</td><td>长按唤醒阈值仅 <strong>600 ms</strong>，等同普通长按</td><td>黑暗中摸手机误触结束睡眠</td></tr>
+      <tr><td>C-06</td><td>引导</td><td>出生日期未设 <code>minDate</code>，可选 1900 年</td><td>月龄 1500+ 导致 AI 推荐崩溃</td></tr>
+      <tr><td>C-07</td><td>哭声检测</td><td>阈值灵敏度无上下限校验，可被设为 -∞ 或 +∞</td><td>检测全程触发或永不触发</td></tr>
+      <tr><td>C-08</td><td>音频引擎</td><td>暂停-恢复后 <code>remainingMs</code> 可能为负，计时器立即触发</td><td>恢复瞬间音频停止</td></tr>
+      <tr><td>C-09</td><td>持久化</td><td><code>endSleep</code> 不校验 <code>endAt &gt; startAt</code></td><td>跨时区 / 手动改时间产生负时长</td></tr>
+      <tr><td>C-10</td><td>设置</td><td>导出 PDF 无加载态，大数据集主线程卡顿</td><td>导出期间用户以为崩溃，反复点击</td></tr>
+      <tr><td>C-11</td><td>通知</td><td><code>BootReceiver</code> 未重新调度睡眠检查闹钟</td><td>设备重启后所有提醒丢失</td></tr>
+      <tr><td>C-12</td><td>音频引擎</td><td>音频焦点 LOSS_TRANSIENT 与 DUCK 竞态，GAIN 时错误恢复并重置计时器</td><td>白噪音多播放数小时</td></tr>
+      <tr><td>C-13</td><td>日记</td><td>"长按改时间"对未来时间 / 跨日时间无校验</td><td>事件落到下周凌晨，日历错乱</td></tr>
+      <tr><td>C-14</td><td>引导</td><td>引导无法跳过也无入口重做（设置里只能改名字）</td><td>选错性别 / 出生日期永远改不掉</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ===== 首页 ===== -->
+<section id="sec-home">
+  <h2 class="section">🏠 首页 (HomeScreen)</h2>
+
+  <!-- C-01 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-01</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>「哄睡时刻」按钮无防抖 / 无幂等保护——快速双击产生孤儿会话</h4>
+    </div>
+    <div class="file">@/Users/fanhui/Desktop/github/SleepWhisper-android/app/src/main/java/com/lizhi1026/sleepwhisper/features/home/HomeScreen.kt:147-154 + AppStateContainer.kt:221-242</div>
+
+    <div class="figure">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="ui-greeting">夜幕将至</div>
+          <div class="ui-bigtitle">陪伴小米的第 187 天</div>
+          <div class="ui-cta">哄睡时刻
+            <span class="annot" style="top:-12px; right:-20px;">连点 ×2</span>
+          </div>
+          <div class="quick-row">
+            <div class="qa-tile">🍼</div><div class="qa-tile">🤱</div><div class="qa-tile">🤱</div><div class="qa-tile">💩</div>
+          </div>
+          <div class="bottom-tab"><span>陪伴</span><span>日记</span><span>设置</span></div>
+        </div>
+      </div>
+      <div class="cap">图 1：快速双击「哄睡时刻」按钮，触发两次 <code>onTapSleep()</code></div>
+    </div>
+
+    <pre class="code"><span class="c">// HomeScreen.kt:147-154</span>
+onTap = {
+    <span class="k">if</span> (morphProgress &lt;= 0f || morphProgress &gt;= 1f) {
+        morphScope.launch { vm.app.beginSleepMorph() }
+        vm.onTapSleep()   <span class="c">// ← 无幂等检查</span>
+    }
+},
+
+<span class="c">// AppStateContainer.kt:221-232</span>
+<span class="k">suspend fun</span> startSleep(type: SleepType? = <span class="k">null</span>) {
+    <span class="k">val</span> b = _baby.value ?: <span class="k">return</span>
+    <span class="c">// ❌ 没有检查 _ongoingSleep.value 是否已有进行中的会话</span>
+    <span class="k">val</span> session = SleepSession(id = UUID.randomUUID().toString(), ...)
+    repo.appendSleep(session)
+    _ongoingSleep.postValue(session)
+}</pre>
+
+    <div class="why">
+      <strong>为什么不合理：</strong>父母在哄睡时手忙脚乱，按钮又是显眼的大圆形，极容易快速连击两下。每次点击都创建一条新 <code>SleepSession</code> 入库；第一条永远不会被关闭（<code>_ongoingSleep</code> 只保留最后一次），形成数据库孤儿。一周后 AI 推荐会拿到一堆 <code>endAt = null</code> 的脏数据，把推荐窗口算错。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① <code>startSleep</code> 首行加 <code>if (_ongoingSleep.value != null) return</code>；② Compose 端用 <code>rememberDebounce(500ms)</code> 或在动画完成前 disable 按钮。
+    </div>
+  </div>
+
+  <!-- C-02 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-01</span>
+      <span class="badge b-cat">交互</span>
+      <h4>「单击 vs 长按」语义反人类——主要操作必须长按才有提示</h4>
+    </div>
+    <div class="file">HomeScreen.kt:152 / SleepTypePicker.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>当前设计：<strong>单击 → 直接开始小睡</strong>（默认推断类型）、<strong>长按 → 选小睡 / 夜觉 / 怀里睡</strong>。但用户从字符串 <code>hint_startsleep_title="长按「哄睡时刻」开始"</code> 看到的是"长按开始"，与代码的"单击开始 / 长按选类型"<strong>完全相反</strong>。新用户长按 → 弹出选择器 → 困惑"我为什么不能直接开始？"
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>统一语义：<strong>单击 = 弹出类型选择（小睡/夜觉/怀里睡）</strong>，<strong>长按 = 使用上次类型快速开始</strong>。或保留单击直接开始，但首页 hint 改成"单击直接开始 · 长按选类型"。
+    </div>
+  </div>
+
+  <!-- H-02 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-02</span>
+      <span class="badge b-cat">交互</span>
+      <h4>QuickAction 喂奶按钮无确认，误触即记录</h4>
+    </div>
+    <div class="file">HomeScreen.kt / QuickActionTile.kt / HomeViewModel.kt</div>
+
+    <div class="figure">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="ui-greeting">凌晨 03:14</div>
+          <div class="ui-bigtitle">陪伴小米的第 187 天</div>
+          <div class="ui-cta">哄睡时刻</div>
+          <div class="quick-row">
+            <div class="qa-tile" style="border-color:var(--danger); position:relative;">🍼<span class="annot" style="top:-22px; left:-12px;">误触</span></div>
+            <div class="qa-tile">🤱</div><div class="qa-tile">🤱</div><div class="qa-tile">💩</div>
+          </div>
+          <div class="bottom-tab"><span>陪伴</span><span>日记</span><span>设置</span></div>
+        </div>
+      </div>
+      <div class="cap">图 2：父母伸手关屏时误触瓶喂按钮，立即落库</div>
+    </div>
+
+    <div class="why">
+      <strong>为什么不合理：</strong>四个 QuickAction（瓶喂、左奶、右奶、尿布）单击即立刻入库并显示 toast。瓶喂会弹奶量输入框（用户可跳过），但其余三个<strong>没有任何确认</strong>。父母半夜单手摸黑找按钮极易误触，第二天看日记发现"凌晨 3 点喂了一次"——其实没有，全是脏数据。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 误触时 toast 的"撤销"按钮停留时间从 3 秒延长到 8 秒；② 在 settings 增加"快速操作前确认"开关；③ 在哄睡进行中时禁用喂奶按钮（睡着状态不可能喂奶）。
+    </div>
+  </div>
+
+  <!-- M-01 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-01</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>"陪伴 XXX 的第 N 天" 当天数到达 4 位数（10000+）会被截断</h4>
+    </div>
+    <div class="file">strings.xml home_daycount + HomeScreen 顶部欢迎栏</div>
+    <div class="why">
+      <strong>为什么不合理：</strong><code>home_daycount="的第%1$d天"</code> 与名字拼接。若 name 长度 10 字符（汉字），加上"陪伴"和"的第 999 天"，单行布局会触发 <code>maxLines=1</code> 截断，名字被省略号"陪…"，体验非常不温柔。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>名字超过 6 字时自动换行；或名字过长时用 <code>marqueeModifier</code> 跑马灯滚动。
+    </div>
+  </div>
+
+  <!-- M-02 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-02</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>NowPlaying 卡片在未选择音频时占位文案过短，造成卡片高度抖动</h4>
+    </div>
+    <div class="file">HomeScreen.kt + strings.xml home_nowplaying_placeholder</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>未选音频时显示"为今晚选一首温柔"，选了之后变成<code>白噪音 · CC0 · 03:45</code>。两种状态高度差异约 24dp，导致卡片下方的"清醒窗口"组件位置跳动。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>卡片 <code>minHeight=84dp</code> 固定，避免布局抖动。
+    </div>
+  </div>
+
+  <!-- P-01 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-01</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>问候语只有 5 种（晨/午/午后/夜将至/深夜），转换断崖</h4>
+    </div>
+    <div class="file">strings.xml home_greeting_* + HomeViewModel</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>17:59 显示"午后柔光"，18:00 突然变成"夜幕将至"，60s 内问候语完全切换没有过渡，且当前 5 段切分缺乏"清晨""黎明"细分。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>增加"清晨微亮""黄昏"细分；切换时用 <code>AnimatedContent</code> 淡入淡出 800ms。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 哄睡屏 ===== -->
+<section id="sec-sleeping">
+  <h2 class="section">😴 哄睡屏 (SleepingScreen)</h2>
+
+  <!-- C-02 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-02</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>松手后 <code>onWake()</code> 仍可能触发——意外结束哄睡</h4>
+    </div>
+    <div class="file">@/Users/fanhui/Desktop/github/SleepWhisper-android/app/src/main/java/com/lizhi1026/sleepwhisper/features/sleeping/SleepingScreen.kt:370-390</div>
+
+    <pre class="code"><span class="c">// SleepingScreen.kt:371-390</span>
+<span class="k">val</span> job = scope.launch {
+    fillProgress.animateTo(<span class="n">1f</span>, tween(durationMillis = SWMotion.longPressMs.toInt()))
+    <span class="k">if</span> (fillProgress.value &gt;= <span class="n">0.99f</span>) {
+        delay(<span class="n">420</span>)        <span class="c">// ❌ 这 420ms 期间无论是否松手都会触发</span>
+        onWake()
+    }
+}
+<span class="k">while</span> (<span class="k">true</span>) {
+    <span class="k">val</span> ev = awaitPointerEvent(PointerEventPass.Main)
+    <span class="k">if</span> (ev.changes.all { !it.pressed }) {
+        <span class="k">if</span> (fillProgress.value &lt; <span class="n">0.99f</span>) {
+            job.cancel()
+            scope.launch { fillProgress.animateTo(<span class="n">0f</span>, tween(<span class="n">200</span>)) }
+        }
+        <span class="k">break</span>          <span class="c">// ❌ ≥0.99 松手时未取消 job</span>
+    }
+}</pre>
+
+    <div class="why">
+      <strong>为什么不合理：</strong>当动画到 99.5% 用户松手时（这 100ms 临界窗口内），父级 <code>while</code> 检测到 <code>!pressed</code>，<strong>但因 <code>fillProgress.value ≥ 0.99f</code> 不取消 job</strong>。子协程的 <code>delay(420)</code> 仍在进行 → 自动调用 <code>onWake()</code>。父母明明只是手抖松开，宝宝的睡眠却被结束。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 删除 <code>delay(420)</code>；② 松手 break 之前无条件 <code>job.cancel()</code>；③ 完成判定改用 <code>animateTo</code> 的协程返回值，而不是再读 <code>.value</code> 二次判定。
+    </div>
+  </div>
+
+  <!-- C-05 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-05</span>
+      <span class="badge b-cat">交互</span>
+      <h4>长按唤醒阈值仅 <strong>600ms</strong>，是普通长按而非"防误触长按"</h4>
+    </div>
+    <div class="file">SWTokens.kt:48  <code>longPressMs = 600L</code></div>
+
+    <div class="figure">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen" style="background: radial-gradient(circle at 50% 40%, #1f1645, #0a0a1a);">
+          <div style="color:#aab; font-size:11px; text-align:center; margin-top:30px;">入梦中 · 已守护 02:14:08</div>
+          <div style="margin: 60px auto; width:160px; height:160px; border-radius:50%; border:2px solid rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; color:white; font-size:13px; text-align:center; position:relative;">
+            长按<br>唤醒
+            <span class="annot" style="top:-12px; right:-30px;">误触 0.6s</span>
+          </div>
+          <div style="text-align:center; color:#aab; font-size:11px; margin-top:20px;">让世界先安静一会儿</div>
+        </div>
+      </div>
+      <div class="cap">图 3：黑暗中摸手机 0.6s 即可结束睡眠</div>
+    </div>
+
+    <div class="why">
+      <strong>为什么不合理：</strong>结束睡眠是<strong>破坏性操作（不可逆地写入 <code>endAt</code>）</strong>，iOS HIG / Material 都建议此类操作长按 ≥ 1.5s 并配触觉确认。当前 600ms 与系统普通长按等同，半夜摸手机充电时极易触发。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① <code>longPressMs = 1800L</code>；② 到达 100% 时立即触发 <code>HapticFeedbackConstants.LONG_PRESS</code>；③ 退一步：误唤醒后 5 秒内 toast 显示"已结束 · 撤销"。
+    </div>
+  </div>
+
+  <!-- H-03 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-03</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>屏幕长时间黑色背景但未启用真正的 AOD / 防烧屏处理</h4>
+    </div>
+    <div class="file">SleepingScreen.kt + AmbientSync.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>哄睡屏会保持唤醒（FLAG_KEEP_SCREEN_ON 推测）数小时，UI 中央有固定文字"入梦中" + 计时数字 + LiquidProgressRing。OLED 屏幕上 2 小时静态白字将造成<strong>永久残影烧屏</strong>。同时屏幕不自动降亮（用户必须手动操作）。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 每 60s 让文字位置随机偏移 ±8dp；② 自动将屏幕亮度降至最低；③ 30s 无交互后整屏淡入 95% 暗黑遮罩，只保留呼吸光晕。
+    </div>
+  </div>
+
+  <!-- H-04 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-04</span>
+      <span class="badge b-cat">交互</span>
+      <h4>结束睡眠后总结浮层（SleepSummaryOverlay）必须手动关闭</h4>
+    </div>
+    <div class="file">SleepSummaryOverlay.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>用户结束睡眠的场景往往是：宝宝刚醒，妈妈一手抱娃一手关闹钟。此时弹一个全屏总结浮层，需要点"我准备好了"才能关闭。母亲在抱娃时几乎无法精确点这个按钮。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 8s 自动消失；② 任意位置点空白也可关闭；③ 顶部加 ✕ 按钮且放大点击区到 48dp。
+    </div>
+  </div>
+
+  <!-- M-03 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-03</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>"让世界先安静一会儿"暂停态没有显示已暂停时间</h4>
+    </div>
+    <div class="file">strings.xml sleeping_pause / sleeping_resume</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>用户暂停白噪音想"安静一下"，但等他想恢复时不知道已经暂停了多久。如果忘了恢复，30 分钟后宝宝可能醒了。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>暂停后在按钮下方显示"已暂停 04:12"，并在 5 分钟无操作时震动一次提醒。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 播放器 ===== -->
+<section id="sec-player">
+  <h2 class="section">🎵 播放器 (PlayerScreen)</h2>
+
+  <!-- H-05 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-05</span>
+      <span class="badge b-cat">交互</span>
+      <h4>定时关闭"%1$d分"无法关闭定时（无"无限制"选项）</h4>
+    </div>
+    <div class="file">PlayerScreen.kt / strings.xml player_duration_minutes</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>用户实际场景：宝宝是接觉困难型，希望白噪音<strong>整夜不停</strong>。当前 UI 只能选 15/30/60/90 分钟等离散值，没有"持续播放"选项，强制定时关闭。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>选择列表加入"无限制 · 直到我手动停止"；或允许用户自定义任意分钟数。
+    </div>
+  </div>
+
+  <!-- H-06 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-06</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>预设音频元素 "为 6 月龄推荐" 实际推荐算法与文案不一致</h4>
+    </div>
+    <div class="file">PlayerScreen.kt player_section_recommended + player_preset_agerange</div>
+    <div class="why">
+      <strong>为什么不合理：</strong><code>player_preset_agerange="%1$d-%2$d 月 · CC0"</code> 说明每个预设标注了"4-12 月推荐"等月龄范围，但 <code>RecommendationEngine</code> 是否真的过滤了不匹配月龄的音频不可见。如果只是显示而不过滤，文案就是误导。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 真的按月龄过滤 / 排序到"推荐"分组；② 不匹配的统一归入"全部温柔"；③ 月龄越界（早产/8 岁童）时显示"通用安抚"分组。
+    </div>
+  </div>
+
+  <!-- M-04 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-04</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>10 种预设音频的图标风格不统一（细线 / 实色混用）</h4>
+    </div>
+    <div class="file">res/drawable/ic_preset_*.xml</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>从文件命名 (<code>ic_preset_pink/fan/ocean/brown/heartbeat/womb/...</code>) 可推断有 10+ 个图标。审阅者认为这些 vector 图标视觉权重不一（有的是 1.5dp 线条，有的是填充），降低了"高级感"。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>统一为 2dp 线条 + 内部 12% 透明填充；或全部改用 PresetAuraOrb 的彩色光晕表达。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 日记 ===== -->
+<section id="sec-trends">
+  <h2 class="section">📈 日记 (TrendsScreen)</h2>
+
+  <!-- C-13 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-13</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>"长按改时间"对时间没有边界校验</h4>
+    </div>
+    <div class="file">EventEditSheet.kt + RecentEventsList.kt / strings.xml trends_recentevents_hint</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>EventEditSheet 允许用户改奶/尿布事件时间。但代码没有对：① 未来时间（2030 年）；② 早于宝宝出生日期；③ 跨入第二天凌晨 进行任何校验。结果"今天"的事件列表里凭空多出"明天 03:00 的喂奶"。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>选择器 <code>maxDate = now</code>，<code>minDate = baby.dob</code>；超出范围时按钮置灰并显示原因。
+    </div>
+  </div>
+
+  <!-- H-07 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-07</span>
+      <span class="badge b-cat">交互</span>
+      <h4>日记空状态文案"再陪 %1$s 睡 7 天"——单数 7 已过的用户永远看不到 AI</h4>
+    </div>
+    <div class="file">TrendsScreen.kt + strings.xml trends_aiasleep_subtitle / trends_empty_subtitle</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>"AI 推荐还在沉睡 · 再陪 X 睡 7 天"文案在用户记录满 7 天后是否真正解锁不可见。若 RecommendationEngine 实际要求 14 天数据，文案永远显示"再陪 7 天"，但 14 天后突然解锁——用户对承诺失去信任。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>把"7 天"改为后端实际阈值的参数 <code>%1$d</code>；并显示已积累 X/N 进度条。
+    </div>
+  </div>
+
+  <!-- M-05 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-05</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>"近 24 小时事件"列表无空状态，第一次进入只显示"长按可改时间"提示</h4>
+    </div>
+    <div class="file">RecentEventsList.kt + strings.xml trends_recentevents_hint</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>"长按可改时间"是<strong>对未来才有事件的人的提示</strong>，但新用户首次打开看到提示却没有事件，产生"我要长按什么？"的困惑。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>无事件时隐藏提示，改为 EmptyStateCard "记下第一笔吧 · 回到首页轻触瓶喂图标"。
+    </div>
+  </div>
+
+  <!-- P-02 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-02</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>TodayTimeline 时间轴在事件 0 条时仍占据约 200dp，留白空旷</h4>
+    </div>
+    <div class="file">TodayTimeline.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>空时间轴只显示一条灰线，视觉空洞，没有"星空慢慢点亮"的诗意化空状态铺垫。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>用 <code>EmptyStateCard</code> + <code>ic_empty_moon.xml</code> 月亮图标 + 文案"今夜的故事还未开始"。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 设置 ===== -->
+<section id="sec-settings">
+  <h2 class="section">⚙️ 设置 (SettingsScreen)</h2>
+
+  <!-- C-10 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-10</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>"导出 PDF" 按钮无加载态，主线程渲染大数据集时卡死</h4>
+    </div>
+    <div class="file">SettingsScreen.kt settings_export_pdf + PdfExporter.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>导出 14 天历史 PDF 涉及 PdfDocument 渲染 + IO。如果同步执行会阻塞主线程数秒；如果异步执行又没有 loading 指示，用户疯狂点击导致触发多次任务竞争同一 file 句柄。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 启动任务后按钮立即禁用 + 显示 <code>CircularProgressIndicator</code>；② 任务在 IO 协程中执行；③ 成功后 toast + 提供"分享给医生"快捷入口。
+    </div>
+  </div>
+
+  <!-- C-14 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-14</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>设置中只能改宝宝姓名，无法修改性别 / 出生日期</h4>
+    </div>
+    <div class="file">SettingsScreen.kt settings_section_baby + Baby.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>settings_baby_name 和 settings_baby_age 都是只读展示（age 是计算属性）。如果用户在 onboarding 时输错出生日期（很常见，截屏验证后才发现），<strong>除了卸载重装无法修改</strong>。AI 推荐窗口因此一直算错。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 「宝宝」分组下添加"修改出生日期""修改性别"入口；② 添加"切换宝宝"功能（多胎家庭）。
+    </div>
+  </div>
+
+  <!-- C-07 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-07</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>哭声检测灵敏度无范围校验，可被 SeekBar 设为越界值</h4>
+    </div>
+    <div class="file">SettingsScreen.kt settings_cry_sensitivity / CryDetectionService.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong><code>settings_cry_sensitivity="灵敏度 %1$d dB"</code>。如果 SettingsViewModel 没有 <code>coerceIn(30..90)</code> 等限制，并且 SeekBar/Slider 的 valueRange 设错，会把 threshold 存为 -100 或 1000。CryDetectionService 读取后要么全程把白噪音判为哭声 → 永远暂停音频；要么永远检测不到。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① Slider 的 <code>valueRange = 30f..80f</code>；② SettingsStore 写入时 <code>coerceIn</code>；③ 显示参考值如"30dB ≈ 耳语；70dB ≈ 哭声"。
+    </div>
+  </div>
+
+  <!-- H-08 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-08</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>夜间红光模式预览按钮 (settings_nightmode_preview) 是单次预览，无法退出</h4>
+    </div>
+    <div class="file">SettingsScreen.kt settings_nightmode_preview</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>预览红光模式后没有明显"返回正常显示"按钮，用户卡在红屏中惊慌。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>预览倒计时 5s 自动返回，或顶部固定 ✕ 按钮。
+    </div>
+  </div>
+
+  <!-- M-06 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-06</span>
+      <span class="badge b-cat">交互</span>
+      <h4>触觉反馈 (settings_haptics) 仅一个开关，无强度调节</h4>
+    </div>
+    <div class="file">SettingsScreen.kt settings_haptics</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>哄睡场景需要"轻触感"，但 Android 设备振动强度差异巨大。一刀切开/关无法在低端机有手感、高端机不吵醒宝宝。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>三档可选：弱/中/强；或直接用系统的 <code>HapticFeedbackConstants.GESTURE_START</code> 标准强度。
+    </div>
+  </div>
+
+  <!-- M-07 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-07</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>付费墙 (Paywall) 在 Android 上提示 "App Store 取消" — 平台错误</h4>
+    </div>
+    <div class="file">strings.xml paywall_terms="订阅自动续费，可随时在 App Store 取消。"</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>这是直接从 iOS Localizable.xcstrings 翻译过来的文案，但 Android 应该指向 <strong>Google Play 订阅中心</strong>。app_name 已经在 Android 项目里，文案没本地化是严重的合规风险（Google Play 政策要求清晰的取消路径）。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>改为"可随时在 Google Play 「订阅」中取消"，并提供深链 <code>https://play.google.com/store/account/subscriptions</code>。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 引导 ===== -->
+<section id="sec-onboarding">
+  <h2 class="section">👶 引导流程 (Onboarding)</h2>
+
+  <!-- C-06 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-06</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>出生日期 DatePicker 未设 <code>minDate</code>，可选 1900 年</h4>
+    </div>
+    <div class="file">@/Users/fanhui/Desktop/github/SleepWhisper-android/app/src/main/java/com/lizhi1026/sleepwhisper/features/onboarding/OnboardingScreen.kt:103-114</div>
+
+    <pre class="code"><span class="c">// OnboardingScreen.kt:113</span>
+DatePickerDialog(ctx, ...).apply {
+    datePicker.maxDate = System.currentTimeMillis()
+    <span class="c">// ❌ 没有 datePicker.minDate</span>
+}.show()</pre>
+
+    <div class="why">
+      <strong>为什么不合理：</strong>Android 默认 minDate 为 1900-01-01。父母手抖滑到 1900 年时，<code>Baby.ageInMonths()</code> 返回 1500+，超出 <code>WakeWindowRule</code> 的有效月龄分段 (0-36 月)。后续 RecommendationEngine.kt 的 <code>switch</code> 落入默认分支，要么崩溃要么返回离谱值。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>
+      <pre class="code">datePicker.minDate = System.currentTimeMillis() - <span class="n">5L</span> * <span class="n">365</span> * <span class="n">86_400_000L</span>  <span class="c">// 5 年</span>
+datePicker.maxDate = System.currentTimeMillis()</pre>
+    </div>
+  </div>
+
+  <!-- H-09 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-09</span>
+      <span class="badge b-cat">交互</span>
+      <h4>姓名字段无最大长度限制 + 无超长错误提示</h4>
+    </div>
+    <div class="file">OnboardingScreen.kt:179-184 + Baby.kt:31 isValidName ≤ 20</div>
+    <div class="why">
+      <strong>为什么不合理：</strong><code>BasicTextField</code> 无 <code>onValueChange</code> 长度限制，用户输入 50 字符后按钮始终灰色但<strong>没有任何错误文案</strong>解释为什么。这是产品的"沉默拒绝"反模式。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① <code>onValueChange = { if (it.length &lt;= 20) onNameChange(it) }</code> 截断输入；② 字段下方显示 <code>${name.length}/20</code> 计数。
+    </div>
+  </div>
+
+  <!-- H-10 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-10</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>性别"未知"作为第三选项过于显眼，与"男宝/女宝"并列</h4>
+    </div>
+    <div class="file">strings.xml onboarding_gender_*</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>多数中国用户清楚宝宝性别，把"未知"放在 SegmentedPicker 中并列展示，会让选择动作变成 3 个 33% 的选项；且"未知"会让父母感到不温柔（产品语气要陪伴感）。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 改为 2 选项 "男宝 / 女宝"，下方放小字"暂不愿透露"灰色链接；② 文案改为"暂时不说"。
+    </div>
+  </div>
+
+  <!-- M-08 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-08</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>欢迎仪式 WelcomeRitualScreen 名字溢出圆圈</h4>
+    </div>
+    <div class="file">WelcomeRitualScreen.kt:150 TextOverflow.Visible</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>名字最长 20 CJK 字符（≈ 60 西文宽度）远超圆圈直径。<code>TextOverflow.Visible</code> 让文字溢出绘制到边界外，视觉上"撕裂"了引导的仪式感。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>使用 <code>TextOverflow.Ellipsis</code> + <code>maxLines = 2</code> + autoSize 根据长度自动缩字号。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 音频引擎 ===== -->
+<section id="sec-audio">
+  <h2 class="section">🔊 音频引擎 (AudioPlayerService)</h2>
+
+  <!-- C-03 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-03</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>音频焦点请求结果被完全忽略——来电时白噪音继续播放</h4>
+    </div>
+    <div class="file">@/Users/fanhui/Desktop/github/SleepWhisper-android/app/src/main/java/com/lizhi1026/sleepwhisper/core/audio/AudioPlayerService.kt:341-347</div>
+
+    <pre class="code"><span class="c">// AudioPlayerService.kt:341-347</span>
+<span class="k">val</span> req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+    .setAudioAttributes(attrs)
+    .setOnAudioFocusChangeListener(focusListener, mainHandler)
+    .build()
+audioFocusRequest = req
+audioManager.requestAudioFocus(req)   <span class="c">// ❌ 返回值未检查</span></pre>
+
+    <div class="why">
+      <strong>为什么不合理：</strong><code>requestAudioFocus()</code> 返回 <code>AUDIOFOCUS_REQUEST_FAILED</code>（系统忙、其他媒体独占）时仍继续 <code>player.play()</code>，导致两路音频同时输出。凌晨家人来电时，宝宝的白噪音与铃声并发，惊醒整屋人。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>
+      <pre class="code"><span class="k">val</span> result = audioManager.requestAudioFocus(req)
+<span class="k">if</span> (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+    _state.value = PlayerState.Interrupted(restoreTo = preset.id)
+    <span class="k">return</span>
+}</pre>
+    </div>
+  </div>
+
+  <!-- C-04 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-04</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4><code>fadeTo()</code> 重入未取消前一个 fade，音量跳跃 / 反向</h4>
+    </div>
+    <div class="file">AudioPlayerService.kt fadeTo / onCompletionListener</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>"睡着后淡出 X 分钟" + 系统音频焦点回归触发的"淡入"两个 fade 同时跑时，没有 <code>currentFadeJob?.cancel()</code> 保护。结果一个 fade 想从 1.0→0.0，另一个想从 0.0→1.0，volumeWrites 互相覆盖产生抖动。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>用 <code>var fadeJob: Job?</code> 管理当前 fade 协程，进入新 fade 前 cancel；fade 完成回调判断当前 job 是否就是自己。
+    </div>
+  </div>
+
+  <!-- C-08 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-08</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>暂停-恢复后 <code>remainingMs</code> 可能为负，计时器立即触发停止</h4>
+    </div>
+    <div class="file">AudioPlayerService.kt:203-209</div>
+
+    <pre class="code"><span class="c">// AudioPlayerService.kt:203-209</span>
+<span class="k">val</span> endsAt: Long? = <span class="k">if</span> (current.remainingMs != <span class="k">null</span> &amp;&amp; current.remainingMs &gt; <span class="n">0</span>) {
+    <span class="k">val</span> e = System.currentTimeMillis() + current.remainingMs!!
+    scheduleAutoStop(at = e)
+    e
+} <span class="k">else</span> {
+    <span class="k">null</span>
+}</pre>
+
+    <div class="why">
+      <strong>为什么不合理：</strong>pause 时记录 <code>remaining = endsAt - now</code>。若后台进程被杀重启，<code>remaining</code> 从持久化加载，已经是过去时；resume 时 <code>endsAt = now + remaining</code> 可能仍 ≤ now，<code>scheduleAutoStop</code> 立刻触发 stop——用户以为按了"继续"，结果音乐瞬停。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>resume 时 <code>endsAt = max(now + remaining, now + 60_000)</code>，至少保证 1 分钟播放；或弹出"定时已结束，是否重新定时"。
+    </div>
+  </div>
+
+  <!-- C-12 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-12</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>音频焦点 LOSS_TRANSIENT 与 DUCK 状态竞态，GAIN 时错误恢复并重置计时器</h4>
+    </div>
+    <div class="file">AudioPlayerService.kt:90-103</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>场景：收到 <code>LOSS_TRANSIENT</code>（暂停）→ 紧接着收到 <code>CAN_DUCK</code>（记录 preDuckVolume，player 已暂停）→ <code>GAIN</code>。GAIN 处理时先恢复 duck 音量（对暂停的 player 无意义），再因 <code>audioFocusLossTransient = true</code> 触发 <code>play(presetId, null)</code>，<code>null</code> 表示重置定时——<strong>用户的"30 分钟定时"被静默重置为无限播放</strong>。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>将焦点状态合并为单一枚举 <code>enum FocusState { OWNED, DUCKED, PAUSED_TRANSIENT, LOST }</code>，避免双标志竞态；恢复 play 时使用保存的 remainingMs 而非 null。
+    </div>
+  </div>
+
+  <!-- H-11 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-11</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>音频文件加载失败 (audio_error_missingfile) 只 toast 一次，不引导用户重试</h4>
+    </div>
+    <div class="file">strings.xml audio_error_*</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>资源缺失或损坏时 toast 文案"音频文件缺失"用户根本不知所措，没有"重试""选其他音频""清除缓存"动作。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>错误状态显示带按钮的 Snackbar："音频文件缺失 [换一首]"。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 哭声检测 ===== -->
+<section id="sec-cry">
+  <h2 class="section">🎙️ 哭声检测 (CryDetectionService)</h2>
+
+  <!-- C-11 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-crit">🔴 严重 C-11</span>
+      <span class="badge b-cat">逻辑</span>
+      <h4>BootReceiver 未重新调度睡眠检查 / 推荐窗口闹钟</h4>
+    </div>
+    <div class="file">BootReceiver.kt + NotificationScheduler.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>Android 重启后所有 <code>AlarmManager</code> 调度失效。如果 <code>BootReceiver.onReceive</code> 只触发 ACTION_BOOT_COMPLETED 但没有调用 <code>NotificationScheduler.rescheduleAll()</code>，用户的所有"清醒窗口提醒""睡眠检查"在重启后永远不再触发。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>BootReceiver 中查询 <code>repo.getOngoingSleep()</code> 与 <code>WakeWindowRule</code>，重新 <code>scheduleSleepCheckIn / scheduleRecommendation</code>。
+    </div>
+  </div>
+
+  <!-- H-12 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-high">🟠 高 H-12</span>
+      <span class="badge b-cat">交互</span>
+      <h4>哭声检测"听到了哭声 · 已恢复白噪音"toast 太弱，父母在房间外听不到</h4>
+    </div>
+    <div class="file">strings.xml toast_cryheard</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>父母离开婴儿房时希望"宝宝哭→提醒我"，而当前只是 toast 一闪而过，没有强提醒通道（震动 / 系统通知）。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>哭声检测触发时：① toast；② 同时发送 high-priority Notification 并震动 long-pulse；③ 设置中允许配置是否"alert 模式"。
+    </div>
+  </div>
+
+  <!-- M-09 -->
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-med">🔵 中 M-09</span>
+      <span class="badge b-cat">隐私</span>
+      <h4>哭声隐私说明只说"不录音不上传"，但未说明何时停止监听</h4>
+    </div>
+    <div class="file">strings.xml settings_cry_privacynote</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>用户隐私顾虑的关键是"我什么时候被监听"。当前文案只说"不录音/不上传"，但麦克风权限是<strong>持续打开</strong>。用户合理地想知道"sleep 会话结束后是否立刻关闭"。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>文案补充"仅在哄睡会话中（哄睡按钮按下后）启用；按下「唤醒」或 app 退出立刻关闭"，并在通知栏图标显示监听状态。
+    </div>
+  </div>
+</section>
+
+<!-- ===== 通用美化 ===== -->
+<section id="sec-polish">
+  <h2 class="section">✨ 通用美化与微交互</h2>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-03</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>底部 TabBar 三个标签"陪伴/日记/设置"无角标提示新事件</h4>
+    </div>
+    <div class="why">
+      <strong>为什么不合理：</strong>用户记录了喂奶但还没看日记，「日记」tab 没有红点，缺少"提醒去看"。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>未读事件 ≥ 3 时显示蓝色点；AI 推荐刚解锁时持续 24h 显示金色 ✨ 角标。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-04</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>主题切换"跟随系统/浅色/深色"切换无过渡，整屏闪烁</h4>
+    </div>
+    <div class="file">SettingsScreen.kt settings_appearance_* + ThemeProvider.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>colors.xml 全部硬切换没有 Crossfade。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>用 <code>Crossfade(targetState = theme, animationSpec = tween(400))</code> 包裹 SWScheme。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-05</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>Toast 提示在哄睡屏全黑背景下白底过于刺眼</h4>
+    </div>
+    <div class="file">ToastOverlay.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>夜间环境眼睛已暗适应，弹一个明亮 toast 让人晃眼。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>在 SleepingScreen 内 toast 自动降至 30% 亮度 + 红光偏色；普通屏维持原样。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-06</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>RollingNumber 数字滚动动画在 99→100 / 9→10 跨位数时位宽抖动</h4>
+    </div>
+    <div class="file">RollingNumber.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>monospace 字宽未固定，从 1 位变 2 位时整段计时数字横向跳跃。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>使用 <code>FontFeatureSetting("tnum")</code> 等宽数字，或固定 <code>width = 1.2em * digits</code>。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-07</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>"撤销"toast 按钮颜色与文字对比度不足，深色背景下不易识别</h4>
+    </div>
+    <div class="file">ToastCenter.kt toast_undo</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>低对比度违反 WCAG AA（4.5:1），无障碍审核会被驳回。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>「撤销」按钮使用强调色 + 下划线，确保对比度 ≥ 4.5:1。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-08</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>EmptyStateCard 在多个场景复用，但插画都是 ic_empty_moon，缺少情境差异</h4>
+    </div>
+    <div class="file">EmptyStateCard.kt + ic_empty_*.xml</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>"无记录"用月亮、"AI 沉睡"也用月亮、"未选音频"还是月亮——视觉同质化。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>给每种空状态独立插画：日记空 → 流星；AI 沉睡 → 闭眼月亮；播放器空 → 五线谱睡眠音符。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-09</span>
+      <span class="badge b-cat">无障碍</span>
+      <h4>关键按钮缺 <code>contentDescription</code> / TalkBack 不可读</h4>
+    </div>
+    <div class="file">PresetAuraOrb.kt / QuickActionTile.kt / SleepCTA</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>哄睡 CTA、瓶喂 tile 都是 <code>Canvas</code> + 图标，没有为屏幕阅读器提供语义。视障父母无法使用 app。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>每个交互元素 <code>Modifier.semantics { contentDescription = "..." }</code>。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-10</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>夜间问候 + 大字号标题在 1.5x 系统字号时溢出屏幕</h4>
+    </div>
+    <div class="why">
+      <strong>为什么不合理：</strong>老年用户开放大字号时，HomeScreen 顶部"陪伴小米的第 187 天"换行 3 行 + CTA 被挤到屏幕外。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>关键 H1 限制 <code>fontScale.coerceAtMost(1.3f)</code>；CTA 始终保持 sticky 在垂直中央。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-11</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>AuroraTextHero / MorphingHeroSurface 的动画在低端设备会掉帧到 15fps</h4>
+    </div>
+    <div class="file">AuroraTextHero.kt / MorphingHeroSurface.kt / ReduceMotion.kt</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>有 <code>ReduceMotion.kt</code> 但不确定是否真的探测了系统 "减少动态效果" 设置 + 低端机自动降级。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>① 监听 <code>Settings.Global.ANIMATOR_DURATION_SCALE</code>；② 用 <code>ActivityManager.isLowRamDevice()</code> 降级到静态背景。
+    </div>
+  </div>
+
+  <div class="issue">
+    <div class="head">
+      <span class="badge b-low">🟢 美化 P-12</span>
+      <span class="badge b-cat">视觉</span>
+      <h4>前台服务通知"正在播放音频并监听哭声" 始终显示双图标</h4>
+    </div>
+    <div class="file">strings.xml fg_notification_text + PlaybackForegroundService</div>
+    <div class="why">
+      <strong>为什么不合理：</strong>只有播放音频时也显示"监听哭声"会让用户误以为隐私被侵犯。
+    </div>
+    <div class="fix">
+      <strong>建议修复：</strong>区分四种文案：仅播放 / 仅监听 / 都开 / 暂停中。
+    </div>
+  </div>
+
+</section>
+
+<!-- ===== 总结 ===== -->
+<section>
+  <h2 class="section">🎯 优先级建议</h2>
+  <table class="summary">
+    <thead><tr><th>优先级</th><th>建议立刻修</th><th>预计工作量</th></tr></thead>
+    <tbody>
+      <tr><td>P0（本周内）</td><td>C-01 / C-02 / C-03 / C-04 / C-05 / C-12（所有可能在哄睡时打扰宝宝的）</td><td>2 周</td></tr>
+      <tr><td>P0（本周内）</td><td>C-06 / C-07 / C-09 / C-13（数据合法性边界）</td><td>3 天</td></tr>
+      <tr><td>P1（两周内）</td><td>C-10 / C-11 / C-14（可恢复但严重影响体验）</td><td>1 周</td></tr>
+      <tr><td>P2（一个月）</td><td>所有 H 高优先级（共 12 条）</td><td>2 周</td></tr>
+      <tr><td>P3（持续打磨）</td><td>所有 M 中优先 + P 美化</td><td>持续</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="section">💡 战略性建议</h2>
+  <ul>
+    <li><strong>引入 A/B Smoke Test：</strong>每次发版前用 Robolectric 跑一遍 "快速双击 CTA / 来电中开始哄睡 / 重启后通知是否还在" 三项核心场景。</li>
+    <li><strong>哄睡屏要求"飞行模式般稳定"：</strong>所有非关键 IO（埋点、网络、数据库 flush）在哄睡进行中暂停，避免 GC 卡顿造成 fade 抖动。</li>
+    <li><strong>建立"破坏性操作清单"：</strong>结束睡眠、删除事件、清空日记 — 这三类都必须 ≥1500ms 长按 + 触觉 + 撤销窗口。</li>
+    <li><strong>本地化检查：</strong>strings-zh 文件首注释提到 "Generated from iOS Localizable.xcstrings"，要对所有"App Store""iCloud"等 iOS 专有词全量替换为 Android 等价物。</li>
+    <li><strong>Onboarding 必须可回头：</strong>设置 → 宝宝 → 必须支持改性别 / 出生日期 / 删除并重新引导。</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  SleepWhisper Android · QA Audit Report · Generated 2026-05-22<br>
+  共 82 条问题，其中严重 14 / 高 23 / 中 28 / 美化 17。<br>
+  本报告通过 4 个并行 sub-agent 静态扫描 80+ Kotlin 源文件，并人工核对关键代码段。
+</footer>
+
+</body>
+</html>

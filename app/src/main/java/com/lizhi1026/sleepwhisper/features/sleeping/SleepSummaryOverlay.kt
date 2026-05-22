@@ -87,11 +87,11 @@ fun SleepSummaryOverlay(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(SWSpacing.lg)
+                verticalArrangement = Arrangement.spacedBy(SWSpacing.sm)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(SWColor.accent(scheme).copy(alpha = 0.18f))
                         .scale(iconBounce.value),
@@ -101,7 +101,7 @@ fun SleepSummaryOverlay(
                         painter = painterResource(id = R.drawable.ic_empty_sparkles),
                         contentDescription = null,
                         colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(SWColor.accent(scheme)),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 BasicText(

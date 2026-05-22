@@ -35,6 +35,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -227,9 +228,14 @@ class AppStateContainer @Inject constructor(
             type = resolvedType,
             startAt = System.currentTimeMillis()
         )
-        repo.appendSleep(session)
+        // Room write + AlarmManager schedule are blocking syscalls — pushing them to IO
+        // keeps the main thread free during the simultaneous Home→Sleeping morph and the
+        // foreground-service start below, which together were tripping the FGS ANR watchdog.
+        withContext(Dispatchers.IO) {
+            repo.appendSleep(session)
+            notif.scheduleSleepCheckIn(b.id, afterHours = 2.0)
+        }
         _ongoingSleep.postValue(session)
-        notif.scheduleSleepCheckIn(b.id, afterHours = 2.0)
         // Start foreground service + cry detection (cry is gated on settings & permission).
         val s = _settings.value ?: UserSettings.DEFAULT
         if (s.cryDetectionEnabled) {

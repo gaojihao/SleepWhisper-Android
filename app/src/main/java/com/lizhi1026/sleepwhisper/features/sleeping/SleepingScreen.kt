@@ -11,18 +11,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -39,11 +41,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,7 +61,7 @@ import com.lizhi1026.sleepwhisper.core.audio.PlayerState
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalReduceMotion
 import com.lizhi1026.sleepwhisper.core.visualkit.LocalSWScheme
-import com.lizhi1026.sleepwhisper.features.player.PlayerScreen
+import com.lizhi1026.sleepwhisper.features.player.PlayerSheet
 import com.lizhi1026.sleepwhisper.core.visualkit.SWColor
 import com.lizhi1026.sleepwhisper.core.visualkit.SWFont
 import com.lizhi1026.sleepwhisper.core.visualkit.SWGradient
@@ -76,8 +82,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(
-    androidx.compose.animation.ExperimentalSharedTransitionApi::class,
-    androidx.compose.material3.ExperimentalMaterial3Api::class
+    androidx.compose.animation.ExperimentalSharedTransitionApi::class
 )
 @Composable
 fun SleepingScreen(
@@ -150,7 +155,7 @@ fun SleepingScreen(
             // Anchor the whole stack to the vertical center of the usable area. Earlier
             // revisions used Spacer(weight 0.5f)/weight(1f) to position the WakeButton at
             // roughly 1/3 from top — but when the player is Playing the layout adds a
-            // PlayerStatusCard (~64dp) + a 32dp spacer above the button, and on smaller
+            // PlayerStatusCard (~60dp) + a 32dp spacer above the button, and on smaller
             // heights (landscape, multi-window, large font scale) the weighted spacers
             // collapse to 0 and the 180dp WakeButton was getting pushed off the bottom of
             // the screen. The only visible remnant was the PulseRing's outward-expanding
@@ -201,15 +206,7 @@ fun SleepingScreen(
             }
 
             if (showMiniPlayer) {
-                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-                ModalBottomSheet(
-                    onDismissRequest = { showMiniPlayer = false },
-                    sheetState = sheetState
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        PlayerScreen(embedded = true)
-                    }
-                }
+                PlayerSheet(onDismiss = { showMiniPlayer = false })
             }
         }
     }
@@ -272,30 +269,78 @@ private fun CountdownSection(elapsedSec: Long) {
 private fun PlayerStatusCard(presetId: String, endsAt: Long?, nowMs: Long, onClick: () -> Unit) {
     val preset = remember(presetId) { AudioPreset.byId(presetId) }
     val scheme = SWScheme.DARK
+    val ctx = LocalContext.current
+    val presetIconRes = remember(preset?.iconName) {
+        preset?.iconName?.let { name ->
+            ctx.resources.getIdentifier(name, "drawable", ctx.packageName).takeIf { it != 0 }
+        }
+    }
+    val cardSurface = remember(preset?.auraColors?.mid) {
+        val base = Color(0xFF5C4A5A).copy(alpha = 0.90f)
+        preset?.auraColors?.mid?.let { aura ->
+            lerp(base, aura.copy(alpha = 0.90f), 0.05f)
+        } ?: base
+    }
+
     GlassCard(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clickable { onClick() },
         cornerRadius = 18.dp,
+        contentPadding = PaddingValues(horizontal = SWSpacing.md, vertical = 4.dp),
+        surfaceTintOverride = cardSurface,
         elevation = ElevationLevel.MEDIUM
     ) {
         androidx.compose.foundation.layout.Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(SWSpacing.sm)
+            horizontalArrangement = Arrangement.spacedBy(SWSpacing.md)
         ) {
-            BasicText(
-                text = preset?.nameKey?.let { stringResource(audioPresetNameKey(it)) } ?: "",
-                style = SWFont.titleMD().copy(color = Color.White)
-            )
-            AudioWaveform(
-                modifier = Modifier.width(60.dp).height(20.dp),
-                isPlaying = true,
-                color = SWColor.accent(scheme)
-            )
-            endsAt?.let {
-                val remainingMin = ((it - nowMs) / 60_000).coerceAtLeast(0L)
-                BasicText(
-                    text = stringResource(R.string.sleeping_minremaining, remainingMin),
-                    style = SWFont.labelMD().copy(color = Color.White.copy(alpha = 0.7f))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(preset?.auraColors?.bottom ?: SWColor.primary(scheme)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = presetIconRes ?: R.drawable.ic_empty_moon),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(Color.White),
+                    modifier = Modifier.size(24.dp)
                 )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                BasicText(
+                    text = preset?.nameKey?.let { stringResource(audioPresetNameKey(it)) } ?: "",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = SWFont.titleMD().copy(color = SWColor.textPrimary(scheme))
+                )
+            }
+
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SWSpacing.xs)
+            ) {
+                AudioWaveform(
+                    modifier = Modifier.width(36.dp).height(22.dp),
+                    isPlaying = true,
+                    color = SWColor.accent(scheme),
+                    barCount = 8
+                )
+                endsAt?.let {
+                    val remainingMin = ((it - nowMs) / 60_000).coerceAtLeast(0L)
+                    BasicText(
+                        text = stringResource(R.string.sleeping_minremaining, remainingMin),
+                        maxLines = 1,
+                        style = SWFont.labelMD().copy(color = SWColor.textSecondary(scheme))
+                    )
+                }
             }
         }
     }

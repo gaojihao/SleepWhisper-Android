@@ -51,6 +51,7 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.sleepHeroOrigin
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lizhi1026.sleepwhisper.R
 import com.lizhi1026.sleepwhisper.core.audio.PlayerState
+import com.lizhi1026.sleepwhisper.features.player.PlayerSheet
 import com.lizhi1026.sleepwhisper.features.player.syncToPlayer
 import com.lizhi1026.sleepwhisper.core.strings.audioPresetNameKey
 import com.lizhi1026.sleepwhisper.core.strings.greetingForHour
@@ -81,12 +82,13 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
-@OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
+@OptIn(
+    androidx.compose.animation.ExperimentalSharedTransitionApi::class
+)
 @Composable
 fun HomeScreen(
     sharedScope: androidx.compose.animation.SharedTransitionScope,
     animScope: androidx.compose.animation.AnimatedVisibilityScope,
-    onOpenPlayer: () -> Unit,
     vm: HomeViewModel = hiltViewModel()
 ) {
     val scheme = LocalSWScheme.current
@@ -119,6 +121,7 @@ fun HomeScreen(
 
     var showBottleSheet by remember { mutableStateOf(false) }
     var showSleepTypePicker by remember { mutableStateOf(false) }
+    var showPlayerSheet by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AuroraBackdrop()
@@ -161,7 +164,7 @@ fun HomeScreen(
                 presetIconName = currentPreset?.iconName,
                 presetName = currentPreset?.let { stringResource(audioPresetNameKey(it.nameKey)) },
                 isPlaying = playerState is PlayerState.Playing,
-                onClick = onOpenPlayer
+                onClick = { showPlayerSheet = true }
             )
 
             QuickActionsGrid(vm, onBottleTap = { showBottleSheet = true })
@@ -182,6 +185,9 @@ fun HomeScreen(
                 onPick = { type -> vm.onPickSleepType(type) },
                 onDismiss = { showSleepTypePicker = false }
             )
+        }
+        if (showPlayerSheet) {
+            PlayerSheet(onDismiss = { showPlayerSheet = false })
         }
     }
 }
@@ -206,7 +212,7 @@ private fun GreetingSection(babyName: String?, dobMs: Long?, hour: Int) {
             style = SWFont.serif(22).copy(color = SWColor.textSecondary(scheme))
         )
         if (!babyName.isNullOrBlank() || daysOld != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.Bottom) {
                 babyName?.takeIf { it.isNotBlank() }?.let {
                     BasicText(
                         text = it,

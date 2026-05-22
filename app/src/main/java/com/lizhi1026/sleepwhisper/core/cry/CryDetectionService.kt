@@ -93,16 +93,21 @@ class CryDetectionService @Inject constructor(
             return
         }
 
-        try {
-            setupRecorder()
-        } catch (t: Throwable) {
-            // SecurityException, IllegalStateException, etc. Stay Disabled.
-            recorder?.runCatching { release() }
-            recorder = null
-            return
+        // AudioRecord construction + startRecording() block until the audio HAL hands back
+        // a buffer (observed > 1 s on Pixel hardware), which would stall the foreground
+        // service's onStartCommand on the main thread and trip the FGS ANR watchdog.
+        // Push setup + the blocking read loop onto IO; flip _state from there.
+        sampleJob = scope.launch(Dispatchers.IO) {
+            try {
+                setupRecorder()
+            } catch (t: Throwable) {
+                recorder?.runCatching { release() }
+                recorder = null
+                return@launch
+            }
+            _state.value = CryDetectionState.Listening
+            sampleLoop()
         }
-        _state.value = CryDetectionState.Listening
-        sampleJob = scope.launch { sampleLoop() }
 
         powerSaveReceiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context, intent: Intent) {

@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -103,17 +102,17 @@ fun GlassCard(
             // The glow is dimmed via Modifier.alpha because Compose's Brush has no
             // built-in alpha multiplier — the wrapping Box scales the gradient down
             // to a whisper without changing the gradient's stop colors.
-            Box(Modifier.fillMaxSize().background(SWGradient.moonHalo(scheme)))
+            Box(Modifier.matchParentSize().background(SWGradient.moonHalo(scheme)))
             Box(
                 Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .alpha(0.06f)
                     .background(SWGradient.auroraGlow(scheme))
             )
         } else {
             // DAY: inner highlight — top 30% slightly brighter
             Box(
-                Modifier.fillMaxSize().background(
+                Modifier.matchParentSize().background(
                     Brush.verticalGradient(
                         0f to Color.White.copy(alpha = 0.5f),
                         0.3f to Color.Transparent,
