@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,8 +73,6 @@ import com.lizhi1026.sleepwhisper.core.visualkit.components.GlassCard
 import com.lizhi1026.sleepwhisper.core.visualkit.components.Hairline
 import com.lizhi1026.sleepwhisper.core.visualkit.components.PulseRing
 import com.lizhi1026.sleepwhisper.core.visualkit.components.RollingNumber
-import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButton
-import com.lizhi1026.sleepwhisper.core.visualkit.components.SoftButtonStyle
 import com.lizhi1026.sleepwhisper.model.DiaperEvent
 import com.lizhi1026.sleepwhisper.model.FeedingEvent.FeedingMethod
 import java.time.LocalDate
@@ -146,7 +143,6 @@ fun HomeScreen(
             SleepCTA(
                 sharedScope = sharedScope,
                 animScope = animScope,
-                morphProgress = morphProgress,
                 onTap = {
                     if (morphProgress <= 0f || morphProgress >= 1f) {
                         morphScope.launch { vm.app.beginSleepMorph() }
@@ -403,43 +399,61 @@ private fun QuickActionsGrid(vm: HomeViewModel, onBottleTap: () -> Unit) {
 private fun SleepCTA(
     sharedScope: SharedTransitionScope,
     animScope: AnimatedVisibilityScope,
-    morphProgress: Float,
     onTap: () -> Unit,
     onLongPress: () -> Unit
 ) {
     val scheme = LocalSWScheme.current
-    val isMorphing = morphProgress > 0f && morphProgress < 1f
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = SWSpacing.xs),
         contentAlignment = Alignment.Center
     ) {
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .clip(CircleShape)
+                .background(SWColor.surfaceElevated(scheme).copy(alpha = 0.32f))
+                .innerHighlight(cornerRadius = 100.dp)
+        )
         PulseRing(
             color = SWColor.accent(scheme),
-            radius = 64.dp,
+            radius = 80.dp,
             intensity = PulseIntensity.STRONG
         )
         Box(
             modifier = Modifier
-                .widthIn(max = 280.dp)
-                .fillMaxWidth()
+                .size(120.dp)
                 .sleepHeroOrigin(sharedScope, animScope)
+                .clip(CircleShape)
+                .background(SWGradient.auroraGlow(scheme))
+                .innerHighlight(cornerRadius = 60.dp)
                 .pointerInput(onTap, onLongPress) {
                     detectTapGestures(
                         onLongPress = { onLongPress() },
                         onTap = { onTap() }
                     )
-                }
+                },
+            contentAlignment = Alignment.Center
         ) {
-            SoftButton(
-                text = stringResource(R.string.home_sleepcta),
-                onClick = onTap,
-                style = SoftButtonStyle.HERO,
-                leadingIconRes = R.drawable.ic_moon_zzz,
-                enabled = !isMorphing,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_moon_zzz),
+                    contentDescription = null,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
+                    modifier = Modifier.size(28.dp)
+                )
+                BasicText(
+                    text = stringResource(R.string.home_sleepcta),
+                    style = SWFont.labelMD().copy(
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                )
+            }
         }
     }
 }
